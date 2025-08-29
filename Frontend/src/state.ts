@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { Video } from './types';
-import { sendLike } from './lib/feed';
+import type { Video } from './types.js';
+import { sendLike } from './lib/feed.js';
 
 type FeedState = {
   videos: Video[];
