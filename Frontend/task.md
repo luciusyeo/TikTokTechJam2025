@@ -9,8 +9,8 @@
 - [x] Define Video and Comment types in types.ts
 
 ## Phase 2: Data & State Layer
-- [ ] Create mock feed service in lib/feed.ts with fetchFeed, fetchComments, sendLike, sendComment functions
-- [ ] Set up Zustand store in state.ts with feed state management (videos, index, toggleLike, etc)
+- [x] Create mock feed service in lib/feed.ts with fetchFeed, fetchComments, sendLike, sendComment functions
+- [x] Set up Zustand store in state.ts with feed state management (videos, index, toggleLike, etc)
 
 ## Phase 3: Core Components
 - [ ] Create VideoCard component with auto-play video, overlay controls, and like/comment buttons
