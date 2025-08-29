@@ -10,11 +10,11 @@ const mockUsers: User[] = [
   { id: '6', name: 'travel_jenny', avatar: 'https://i.pravatar.cc/150?img=6' },
 ];
 
-// Mock video data - using placeholder videos for now
+// Mock video data - using local sample dancing video
 const mockVideos: Video[] = [
   {
     id: '1',
-    src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    src: '/sample-videos/2795750-uhd_3840_2160_25fps.mp4',
     caption: 'Check out this amazing dance routine! 💃✨ #dance #viral',
     author: mockUsers[0],
     stats: { likes: 1240, comments: 89 },
@@ -22,40 +22,40 @@ const mockVideos: Video[] = [
   },
   {
     id: '2',
-    src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    caption: 'Creative process behind my latest artwork 🎨 What do you think?',
+    src: '/sample-videos/2795750-uhd_3840_2160_25fps.mp4',
+    caption: 'Creative dance moves! Love this energy 🔥 #dance #moves',
     author: mockUsers[1],
     stats: { likes: 2156, comments: 143 },
     meLiked: true,
   },
   {
     id: '3',
-    src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    caption: 'Morning workout motivation 💪 Who\'s joining me today? #fitness',
+    src: '/sample-videos/2795750-uhd_3840_2160_25fps.mp4',
+    caption: 'Morning dance motivation 💪 Who\'s joining me today? #fitness #dance',
     author: mockUsers[2],
     stats: { likes: 892, comments: 56 },
     meLiked: false,
   },
   {
     id: '4',
-    src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-    caption: 'Sunset vibes from Bali 🌅 Can\'t believe this view is real!',
+    src: '/sample-videos/2795750-uhd_3840_2160_25fps.mp4',
+    caption: 'Dance vibes are everything 🌟 Can\'t stop moving!',
     author: mockUsers[5],
     stats: { likes: 3421, comments: 278 },
     meLiked: false,
   },
   {
     id: '5',
-    src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
-    caption: '5-minute pasta recipe that will change your life 🍝 #cooking',
+    src: '/sample-videos/2795750-uhd_3840_2160_25fps.mp4',
+    caption: 'Quick dance tutorial - follow along! 🕺 #tutorial #dance',
     author: mockUsers[4],
     stats: { likes: 1876, comments: 234 },
     meLiked: true,
   },
   {
     id: '6',
-    src: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4',
-    caption: 'Digital art time-lapse ✨ 3 hours condensed into 30 seconds',
+    src: '/sample-videos/2795750-uhd_3840_2160_25fps.mp4',
+    caption: 'Dance practice session ✨ Working on new choreography',
     author: mockUsers[3],
     stats: { likes: 967, comments: 92 },
     meLiked: false,

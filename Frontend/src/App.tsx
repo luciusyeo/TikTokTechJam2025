@@ -5,7 +5,7 @@ export function App(props: {
   onRender?: () => void
 }) {
   useEffect(() => {
-    console.info('TikTok-style Feed App - Phase 4 Complete')
+    console.info('TikTok-style Feed App')
   }, [])
   props.onRender?.()
 

@@ -13,9 +13,9 @@
 - [x] Set up Zustand store in state.ts with feed state management (videos, index, toggleLike, etc)
 
 ## Phase 3: Core Components
-- [ ] Create VideoCard component with auto-play video, overlay controls, and like/comment buttons
-- [ ] Create HUD component for displaying likes and comments counters
-- [ ] Create CommentsSheet modal component with comments list and input
+- [x] Create VideoCard component with auto-play video, overlay controls, and like/comment buttons
+- [x] Create HUD component for displaying likes and comments counters
+- [x] Create CommentsSheet modal component with comments list and input
 
 ## Phase 4: Main Screen & UX
 - [ ] Create FeedScreen with vertical paging scroll, snap-to-page behavior, and auto-play control
