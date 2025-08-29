@@ -4,9 +4,9 @@
 **Goal**: Build a lean MVP TikTok-style feed with auto-playing vertical videos, swipe navigation, and like/comment functionality using Lynx + ReactLynx.
 
 ## Phase 1: Foundation
-- [ ] Add Zustand dependency for state management
-- [ ] Create project folder structure (components/, screens/, lib/, types.ts, state.ts)
-- [ ] Define Video and Comment types in types.ts
+- [x] Add Zustand dependency for state management
+- [x] Create project folder structure (components/, screens/, lib/, types.ts, state.ts)
+- [x] Define Video and Comment types in types.ts
 
 ## Phase 2: Data & State Layer
 - [ ] Create mock feed service in lib/feed.ts with fetchFeed, fetchComments, sendLike, sendComment functions
