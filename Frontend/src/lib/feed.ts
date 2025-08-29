@@ -1,4 +1,4 @@
-import { Video, Comment, User } from '../types';
+import type { Video, Comment, User } from '../types.js';
 
 // Mock users data
 const mockUsers: User[] = [
