@@ -12,7 +12,7 @@
 - [x] Create mock feed service in lib/feed.ts with fetchFeed, fetchComments, sendLike, sendComment functions
 - [x] Set up Zustand store in state.ts with feed state management (videos, index, toggleLike, etc)
 
-## Phase 3: Core Components
+## Phase 3: Core Components (SKIPPED FOR NOW)
 - [x] Create VideoCard component with auto-play video, overlay controls, and like/comment buttons
 - [x] Create HUD component for displaying likes and comments counters
 - [x] Create CommentsSheet modal component with comments list and input
