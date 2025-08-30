@@ -8,10 +8,6 @@ A comprehensive, checkbox-driven plan to build the **auto-playing vertical feed*
 
 ## 0) Project Setup
 
-* [ ] **Create project**
-
-  * [ ] `npx create-expo-app tiktok-mvp`
-  * [ ] `cd tiktok-mvp`
 * [ ] **Install libraries**
 
   * [ ] `expo install expo-av react-native-gesture-handler react-native-reanimated`
