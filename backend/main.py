@@ -16,7 +16,7 @@ supabase_client: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY
 # -----------------------------
 # Global model in memory
 # -----------------------------
-global_model = BinaryMLP(input_dim=1024, hidden_dim= 128)  # TODO: adjust input_dim for user+video concatenation
+global_model = BinaryMLP(input_dim=32, hidden_dim= 128)  # TODO: adjust input_dim for user+video concatenation
 global_model_state = None  # list of numpy arrays
 expected_clients = 2   # how many devices you expect in this round
 client_updates: Dict[str, List[np.ndarray]] = {}  # store weights per client
