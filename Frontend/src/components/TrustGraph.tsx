@@ -95,7 +95,7 @@ export default function TrustGraph({ data, canvasSize = 300 }: Props) {
               x2={target.x}
               y2={target.y}
               stroke={edgeColor}
-              strokeWidth={Math.max(edge.trust * 6, 1.5)}
+              strokeWidth={Math.max(edge.trust * 6, 1.0)}
               opacity={0.5 + edge.trust * 0.5}
             />
           );
