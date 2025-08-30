@@ -5,6 +5,8 @@ from model import BinaryMLP
 from supabase import create_client, Client
 import config
 import numpy as np
+from local_api import router as local_router
+from typing import Dict, List
 
 # -----------------------------
 # Supabase client
@@ -14,8 +16,10 @@ supabase_client: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY
 # -----------------------------
 # Global model in memory
 # -----------------------------
-global_model = BinaryMLP(input_dim=512)  # TODO: adjust input_dim for user+video concatenation
+global_model = BinaryMLP(input_dim=1024, hidden_dim= 128)  # TODO: adjust input_dim for user+video concatenation
 global_model_state = None  # list of numpy arrays
+expected_clients = 2   # how many devices you expect in this round
+client_updates: Dict[str, List[np.ndarray]] = {}  # store weights per client
 
 # -----------------------------
 # Pydantic schemas
@@ -50,6 +54,7 @@ def load_latest_global_model():
 # FastAPI App
 # -----------------------------
 app = FastAPI()
+app.include_router(local_router)
 
 @app.on_event("startup")
 def startup_event():
@@ -74,21 +79,26 @@ def get_global_model():
 
 @app.post("/update_model")
 def update_model(update: ModelUpdate):
-    global global_model, global_model_state
-    client_weights = [np.array(w) for w in update.weights]
+    global client_updates, global_model_state
 
-    # Simple FedAvg: average element-wise
-    new_weights = []
-    if global_model_state is None:
-        return {"error": "Global model state is not initialized."}
-    for gw, cw in zip(global_model_state, client_weights):
-        new_weights.append((gw + cw) / 2.0)
+    client_updates[update.client_id] = [np.array(w) for w in update.weights]
 
-    global_model.set_weights(new_weights)
-    global_model_state = new_weights
-    save_global_model(global_model_state)
+    # Federated averaging
+    if len(client_updates) == expected_clients:
+        all_weights = list(client_updates.values())
+        new_weights = []
 
-    return {"status": "global model updated, versioned in Supabase"}
+        for weights_per_layer in zip(*all_weights):
+            new_weights.append(np.mean(weights_per_layer, axis=0))
+
+        global_model.set_weights(new_weights)
+        global_model_state = new_weights
+        client_updates = {}  # reset for next round
+
+        return {"status": "Aggregated", "new_global_model": "ready"}
+
+    else:
+        return {"status": f"Waiting for {expected_clients - len(client_updates)} more clients"}
 
 @app.post("/recommend")
 def recommend(req: RecommendRequest):
