@@ -116,37 +116,49 @@ def update_model(update: ModelUpdate):
     else:
         return {"status": f"Waiting for {expected_clients - len(client_updates)} more clients"}
 
+
 @app.post("/recommend")
 def recommend(req: RecommendRequest):
     global global_model
     
-    # Validate user vector dimensions
     if len(req.user_vector) != 16:
         return {"error": f"user_vector must be exactly 16 dimensions, got {len(req.user_vector)}"}
     
     user_vec = np.array(req.user_vector, dtype=np.float32)
 
-    # Check if user vector is a zero vector
+    videos = supabase_client.table("videos").select("id, gen_vector, url").execute().data
+
+    # If user vector is zero, return fully random recommendations
     if np.all(user_vec == 0):
-        videos = supabase_client.table("videos").select("id, url").execute().data
-        random.shuffle(videos)  # Shuffle in place
+        random.shuffle(videos)
         top_videos = [{"id": v["id"], "url": v["url"]} for v in videos[:req.top_k]]
         return {"recommendations": top_videos}
-    
-    user_vec = tf.convert_to_tensor([req.user_vector], dtype=tf.float32)
 
-    videos = supabase_client.table("videos").select("id, gen_vector, url").execute().data
-    scores = []
+    # Convert to tensor for model
+    user_vec_tf = tf.convert_to_tensor([req.user_vector], dtype=tf.float32)
+
+    # Compute scores
+    scored_videos = []
     for v in videos:
-        # Validate gen_vector dimensions
-        if len(v["gen_vector"]) != 16:
-            continue  # Skip videos with incorrect vector dimensions
-            
-        video_vec = tf.convert_to_tensor([v["gen_vector"]], dtype=tf.float32)
-        score = global_model.forward(user_vec, video_vec).numpy().item()
-        scores.append((v["id"], score, v["url"]))
+        if len(v.get("gen_vector", [])) != 16:
+            continue
+        video_vec_tf = tf.convert_to_tensor([v["gen_vector"]], dtype=tf.float32)
+        score = global_model.forward(user_vec_tf, video_vec_tf).numpy().item()
+        scored_videos.append((v["id"], score, v["url"]))
 
-    scores.sort(key=lambda x: x[1], reverse=True)
-    top_videos = [{"id": vid, "url": url} for vid, _, url in scores[:req.top_k]]
+    scored_videos.sort(key=lambda x: x[1], reverse=True)
 
-    return {"recommendations": top_videos}
+    top_k = req.top_k
+    top_videos = [{"id": vid, "url": url} for vid, _, url in scored_videos[:top_k]]
+
+    # Mix in 20% random videos
+    num_random = max(1, int(top_k * 0.2))
+    remaining_videos = [v for v in videos if v["id"] not in [vid for vid, _, _ in scored_videos[:top_k]]]
+    random_videos = random.sample(remaining_videos, min(num_random, len(remaining_videos)))
+    random_videos_formatted = [{"id": v["id"], "url": v["url"]} for v in random_videos]
+
+    # Combine and slice to maintain top_k length
+    final_recommendations = top_videos[:top_k - len(random_videos_formatted)] + random_videos_formatted
+
+    return {"recommendations": final_recommendations}
+
