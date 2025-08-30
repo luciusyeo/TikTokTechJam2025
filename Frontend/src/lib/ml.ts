@@ -8,7 +8,6 @@ const VIDEO_INTERACTIONS_KEY = 'video_interactions';
 const COUNTER_KEY = 'count';
 const VECTOR_ARRAYS_KEY = 'vector_arrays';
 
-// In-memory cache for video interactions
 let videoInteractions: VideoInteractions = {};
 let isInitialized = false;
 
@@ -46,7 +45,6 @@ export async function recordLike(videoId: string, isLiked: boolean): Promise<voi
   }
 
   try {
-    // Update in-memory cache - liking a video automatically marks it as viewed
     if (!videoInteractions[videoId]) {
       videoInteractions[videoId] = { viewed: false, liked: false };
     }
@@ -81,7 +79,6 @@ export async function recordViewed(videoId: string): Promise<void> {
   }
 
   try {
-    // Update in-memory cache - only mark as viewed if not already recorded
     if (!videoInteractions[videoId]) {
       videoInteractions[videoId] = { viewed: true, liked: false };
       
@@ -90,7 +87,6 @@ export async function recordViewed(videoId: string): Promise<void> {
       
       console.log(`Recorded view for video ${videoId}`);
     }
-    // If already exists, no need to update since we don't want to overwrite like status
   } catch (error) {
     console.error('Failed to record view:', error);
   }

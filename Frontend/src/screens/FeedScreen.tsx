@@ -70,7 +70,6 @@ export default function FeedScreen() {
               // Reset ML data and cache
               await resetMLData();
               
-              // Reset current user vector in state
               setCurrentUserVector([]);
               
               Alert.alert("Success", "All local data has been cleared.");
@@ -260,7 +259,6 @@ export default function FeedScreen() {
         // console.log(`Active video index: ${activeIndex}, Total videos loaded: ${videos.length}`);
 
         // Load more videos only when the last item is viewed
-        // Ensure we're not in the process of loading more videos
         if (activeIndex === videos.length - 1 && !isLoadingMore) {
           console.log(
             `User reached the last video: ${activeIndex}, loading more...`

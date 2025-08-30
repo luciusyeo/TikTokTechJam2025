@@ -1,6 +1,5 @@
 import { supabase } from "../src/lib/supabase"; // your Supabase client
 
-// Updated interface to reflect the gen_vector column
 interface VideoRow {
   id: number;
   gen_vector: number[];
@@ -14,7 +13,7 @@ export async function fetchVideoVectors(
   try {
     const { data, error } = await supabase
       .from("videos")
-      .select("id, gen_vector") // Ensure gen_vector is included
+      .select("id, gen_vector")
       .in("id", videoIds);
 
     if (error) {
