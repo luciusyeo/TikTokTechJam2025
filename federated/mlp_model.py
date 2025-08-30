@@ -7,8 +7,6 @@ def build_binary_mlp(input_dim):
     model.add(Input(shape=(input_dim,)))
     model.add(Dense(64, activation='relu'))
     model.add(Dense(64, activation='relu'))
-    model.add(Dense(64, activation='relu'))
-    model.add(Dense(64, activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
     return model
 
