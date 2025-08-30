@@ -94,6 +94,7 @@ export default function CommentsSheet({}: CommentsSheetProps) {
       addComment(currentVideoId, optimisticComment);
       bumpCommentCount(currentVideoId);
 
+
       // Send to API
       const newComment = await sendComment(currentVideoId, commentText);
       

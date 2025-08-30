@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import { useFeed } from "../state";
 import { Video } from "../types";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { recordLike } from "../lib/ml";
 
 interface VideoCardProps {
   video: Video;
@@ -113,6 +114,7 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
     try {
       // Haptic feedback on double tap
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      recordLike(video.id, !video.meLiked);
       toggleLike(video.id);
       triggerHeartBurst();
     } catch (error) {
@@ -131,6 +133,7 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
         withTiming(1, { duration: 100 })
       );
       
+      recordLike(video.id, !video.meLiked);
       toggleLike(video.id);
     } catch (error) {
       console.warn("Error handling like tap:", error);

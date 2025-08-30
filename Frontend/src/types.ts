@@ -1,6 +1,6 @@
 export type Video = {
   id: string;
-  src: string;  // file:/// local or https://
+  src: string; // file:/// local or https://
   caption: string;
   author: { id: string; name: string; avatar?: string };
   stats: { likes: number; comments: number };
@@ -13,3 +13,10 @@ export type Comment = {
   text: string;
   ts: number; // epoch ms
 };
+
+// Simplified type for like interactions only
+export interface VideoLike {
+  videoId: string;
+  isLiked: boolean;
+  timestamp: number;
+}

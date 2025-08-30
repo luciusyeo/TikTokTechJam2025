@@ -76,6 +76,9 @@ export default function FeedScreen() {
     if (viewableItems.length > 0) {
       const activeIndex = viewableItems[0].index;
       if (activeIndex !== null && activeIndex !== index) {
+
+
+        // Set new index
         setIndex(activeIndex);
         
         // Trigger progressive loading when user is near the end
@@ -86,7 +89,7 @@ export default function FeedScreen() {
         }
       }
     }
-  }, [index, setIndex, videos.length, hasMoreVideos, isLoadingMore, loadMoreVideos]);
+  }, [index, setIndex, videos, hasMoreVideos, isLoadingMore, loadMoreVideos]);
 
   const viewabilityConfig = {
     itemVisiblePercentThreshold: 95,
