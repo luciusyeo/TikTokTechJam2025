@@ -59,6 +59,13 @@ export async function recordLike(videoId: string, isLiked: boolean): Promise<voi
     
     console.log(`Recorded ${isLiked ? 'like' : 'unlike'} for video ${videoId} (also marked as viewed)`);
     
+    // Call functions based on like/dislike action
+    if (isLiked) {
+      // User liked the video: call 2 functions
+    } else {
+      // User disliked the video: call 1 function
+    }
+    
     // Check if we should trigger training
     const totalInteractions = Object.keys(videoInteractions).length;
     if (shouldTriggerTraining(totalInteractions)) {
@@ -237,7 +244,7 @@ export async function storeVectorArray(vectorArray: number[]): Promise<void> {
   try {
     const storageKey = `${VECTOR_ARRAYS_KEY}`;
     await AsyncStorage.setItem(storageKey, JSON.stringify(vectorArray));
-    console.log(`Vector array stored with key: ${storageKey}`);
+    console.log(`Vector array stored with key: ${VECTOR_ARRAYS_KEY}`);
   } catch (error) {
     console.error(`Failed to store vector array with key ${VECTOR_ARRAYS_KEY}:`, error);
   }
@@ -252,7 +259,7 @@ export async function getVectorArray(): Promise<number[] | null> {
     const saved = await AsyncStorage.getItem(storageKey);
     if (saved) {
       const vectorArray = JSON.parse(saved);
-      console.log(`Vector array retrieved with key: ${storageKey}`);
+      console.log(`Vector array retrieved with key: ${VECTOR_ARRAYS_KEY}`);
       return vectorArray;
     }
     return null;
@@ -269,7 +276,7 @@ export async function clearVectorArray(): Promise<void> {
   try {
     const storageKey = `${VECTOR_ARRAYS_KEY}`;
     await AsyncStorage.removeItem(storageKey);
-    console.log(`Vector array cleared with key: ${storageKey}`);
+    console.log(`Vector array cleared with key: ${VECTOR_ARRAYS_KEY}`);
   } catch (error) {
     console.error(`Failed to clear vector array with key ${VECTOR_ARRAYS_KEY}:`, error);
   }
