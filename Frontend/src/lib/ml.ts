@@ -6,6 +6,7 @@ import { Video, VideoInteractions, VideoInteraction } from '../types';
 const VIDEO_INTERACTIONS_KEY = 'video_interactions';
 const MODEL_WEIGHTS_KEY = 'ml_model_weights';
 const COUNTER_KEY = 'count';
+const VECTOR_ARRAYS_KEY = 'vector_arrays';
 
 // In-memory cache for video interactions
 let videoInteractions: VideoInteractions = {};
@@ -223,6 +224,55 @@ export async function recordInteraction(interaction: { videoId: string; action: 
     await recordLike(interaction.videoId, false);
   }
   // Ignore all other interaction types
+}
+
+// ============================================================================
+// VECTOR ARRAY STORAGE FUNCTIONS
+// ============================================================================
+
+/**
+ * Store a vector array with a given key
+ */
+export async function storeVectorArray(key: string, vectorArray: number[]): Promise<void> {
+  try {
+    const storageKey = `${VECTOR_ARRAYS_KEY}_${key}`;
+    await AsyncStorage.setItem(storageKey, JSON.stringify(vectorArray));
+    console.log(`Vector array stored with key: ${key}`);
+  } catch (error) {
+    console.error(`Failed to store vector array with key ${key}:`, error);
+  }
+}
+
+/**
+ * Get a stored vector array by key
+ */
+export async function getVectorArray(key: string): Promise<number[] | null> {
+  try {
+    const storageKey = `${VECTOR_ARRAYS_KEY}_${key}`;
+    const saved = await AsyncStorage.getItem(storageKey);
+    if (saved) {
+      const vectorArray = JSON.parse(saved);
+      console.log(`Vector array retrieved with key: ${key}`);
+      return vectorArray;
+    }
+    return null;
+  } catch (error) {
+    console.error(`Failed to get vector array with key ${key}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Clear a stored vector array by key
+ */
+export async function clearVectorArray(key: string): Promise<void> {
+  try {
+    const storageKey = `${VECTOR_ARRAYS_KEY}_${key}`;
+    await AsyncStorage.removeItem(storageKey);
+    console.log(`Vector array cleared with key: ${key}`);
+  } catch (error) {
+    console.error(`Failed to clear vector array with key ${key}:`, error);
+  }
 }
 
 // ============================================================================
