@@ -168,7 +168,6 @@ def recommend(req: RecommendRequest):
 
     return {"recommendations": final_recommendations}
 
-    return {"recommendations": top_videos}
 
 @app.get("/user_vector")
 def get_user_vectors():
