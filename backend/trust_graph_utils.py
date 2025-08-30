@@ -7,8 +7,6 @@ import os
 
 def create_trust_graph(num_devices):
     G = nx.DiGraph()
-    for i in range(num_devices):
-        G.add_node(i, trust=1.0)  # start fully trusted
     return G
 
 def update_trust(trust_graph, device_id, val_acc, alpha=0.9):

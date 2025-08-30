@@ -12,7 +12,6 @@ import Animated, {
   withRepeat,
   withSequence,
   withSpring,
-  useAnimatedStyle,
 } from "react-native-reanimated";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -68,11 +67,6 @@ export default function TrustGraph({ data, canvasSize = 300 }: Props) {
       };
     });
   }, [data, size]);
-
-  // Animated style applied to all nodes
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulse.value }],
-  }));
 
   return (
     <View style={styles.container}>
