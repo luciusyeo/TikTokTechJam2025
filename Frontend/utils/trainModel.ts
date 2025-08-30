@@ -1,7 +1,7 @@
 import { loadInteractions } from "../storage/interactions";
 import { loadUserVector } from "../storage/userVector";
-import { fetchVideoVectors, sendModelUpdate } from "../api/backend";
-import { trainLocalModel } from "./localModel";
+import { fetchVideoVectors } from "../api/backend";
+import { sendTrainingBatch } from "./localModel"
 
 const TRAIN_BATCH_SIZE = 3;
 
@@ -40,8 +40,5 @@ export async function maybeTrainLocalModel(): Promise<void> {
   const y: number[] = newBatch.map(inter => (inter.liked ? 1 : 0));
 
   // Train local model
-  const localUpdate: LocalModelUpdate = await trainLocalModel(X, y);
-
-  // Send update to backend
-  await sendModelUpdate(localUpdate);
+  await sendTrainingBatch(X, y);
 }

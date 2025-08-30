@@ -12,6 +12,3 @@ venv/
 
 # Mac
 .DS_Store
-
-videovector/compressed/
-videovector/data/
