@@ -51,7 +51,6 @@ export default function FeedScreen() {
       <VideoCard 
         video={item} 
         isActive={isActive} 
-        index={itemIndex} 
       />
     );
   }, [index]);

@@ -20,7 +20,7 @@ A comprehensive, checkbox-driven plan to build the **auto-playing vertical feed*
     ```js
     plugins: ['react-native-reanimated/plugin']
     ```
-  * [ ] Rebuild Metro cache (stop & restart)
+  * [x] Rebuild Metro cache (stop & restart)
 * [ ] **iOS Simulator ready**
 
   * [ ] Xcode & iOS Simulator installed
@@ -32,7 +32,7 @@ A comprehensive, checkbox-driven plan to build the **auto-playing vertical feed*
     ```
     app/index.tsx ✓
     src/screens/FeedScreen.tsx ✓
-    src/components/VideoCard.tsx (pending)
+    src/components/VideoCard.tsx ✓
     src/components/CommentsSheet.tsx (pending)
     src/components/HUD.tsx (pending)
     src/lib/feed.ts ✓
@@ -129,36 +129,70 @@ A comprehensive, checkbox-driven plan to build the **auto-playing vertical feed*
 
 ## 4) Video Card (Auto-Play, Double-Tap Like)
 
-* [ ] **Build `VideoCard.tsx`**
+* [x] **Build `VideoCard.tsx`**
 
-  * [ ] Full-bleed `<Video>` from `expo-av`
-  * [ ] `isLooping` true, **muted by default**
-  * [ ] `shouldPlay={isActive}`
-  * [ ] `onPlaybackStatusUpdate` captured (optional)
-* [ ] **Auto-play control**
+  * [x] Full-bleed `<Video>` from `expo-av`
+  * [x] `isLooping` true, **muted by default**
+  * [x] `shouldPlay={isActive}`
+  * [x] `onPlaybackStatusUpdate` captured (optional)
+* [x] **Auto-play control**
 
-  * [ ] `useEffect([isActive])` → `playAsync()` when active, `pauseAsync()` when not
-  * [ ] Guarantee **only current item plays**
-* [ ] **Double-tap like**
+  * [x] `useEffect([isActive])` → `playAsync()` when active, `pauseAsync()` when not
+  * [x] Guarantee **only current item plays**
+* [x] **Double-tap like**
 
-  * [ ] `react-native-gesture-handler` `TapGestureHandler numberOfTaps={2}`
-  * [ ] On double-tap:
+  * [x] `react-native-gesture-handler` `GestureDetector` with `Gesture.Tap().numberOfTaps(2)`
+  * [x] On double-tap:
 
-    * [ ] `toggleLike(video.id)` (optimistic)
-    * [ ] Heart burst animation (Reanimated)
-* [ ] **Action rail**
+    * [x] `toggleLike(video.id)` (optimistic)
+    * [x] Heart burst animation (Reanimated)
+* [x] **Action rail**
 
-  * [ ] ❤️ button (increments), 💬 button (opens sheet)
-  * [ ] Counters visible over video (shadow/gradient for contrast)
-* [ ] **Caption block**
+  * [x] ❤️ button (increments), 💬 button (opens sheet)
+  * [x] Counters visible over video (shadow/gradient for contrast)
+* [x] **Caption block**
 
-  * [ ] Author handle + caption bottom-left
+  * [x] Author handle + caption bottom-left
 
 **Acceptance**
 
-* [ ] Starting clip auto-plays in ≤ 800ms (local assets)
-* [ ] Double-tap reliably triggers like w/ heart burst in ≤ 100ms
-* [ ] Single-tap **does not** pause (for MVP) or is handled distinctly (if enabled)
+* [x] Starting clip auto-plays in ≤ 800ms (local assets)
+* [x] Double-tap reliably triggers like w/ heart burst in ≤ 100ms
+* [x] Single-tap **does not** pause (for MVP) or is handled distinctly (if enabled)
+
+---
+
+## 4.1) Bug Fixes (expo-av → expo-video Migration)
+
+* [x] **Migration to expo-video**
+
+  * [x] Install `expo-video` package (`npx expo install expo-video`)
+  * [x] Replace `expo-av` Video component with `expo-video` API
+  * [x] Update imports: `useVideoPlayer, VideoView` from `expo-video`
+  * [x] Replace ref-based control with player instance control
+  * [x] Update auto-play logic: `player.play()` / `player.pause()`
+
+* [x] **Fix GestureHandlerRootView error**
+
+  * [x] Add `GestureHandlerRootView` wrapper to `app/_layout.tsx`
+  * [x] Import from `react-native-gesture-handler`
+  * [x] Add `style={{ flex: 1 }}` for full screen
+
+* [x] **API Migration Details**
+
+  * [x] `Video` → `VideoView` with `player` prop
+  * [x] `useVideoPlayer(video.src, config)` for player creation
+  * [x] `player.loop = true` and `player.muted = true` in config
+  * [x] `contentFit="cover"` instead of `ResizeMode.COVER`
+  * [x] Remove deprecated `onPlaybackStatusUpdate` callback
+
+**Acceptance**
+
+* [x] ✅ No more "expo-av deprecated" warning
+* [x] ✅ No more "GestureDetector must be descendant of GestureHandlerRootView" error
+* [x] ✅ Video auto-play functionality preserved
+* [x] ✅ Double-tap like gestures still work
+* [x] ✅ All existing functionality maintained
 
 ---
 
