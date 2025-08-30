@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,205 +9,218 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { supabase } from "../lib/supabase";
 import { Video, ResizeMode } from "expo-av";
 import EmbeddingGraph from "../components/EmbeddingGraph";
+import { supabase } from "../lib/supabase";
 
 const { width } = Dimensions.get("window");
-const COVER_WIDTH = (width - 60) / 2;
-const COVER_HEIGHT = COVER_WIDTH * 1.2;
+const COVER_WIDTH = (width - 48) / 2; // 2 columns with spacing
+const COVER_HEIGHT = COVER_WIDTH * 0.75; // shorter videos
+const TIMER = 10 * 1000;
+
+const USER_VECTOR_URL = "http://localhost:8000/user_vector";
+const RECOMMEND_URL = "http://localhost:8000/recommend";
 
 export default function AnalyticsScreen() {
   const router = useRouter();
-  const [device1Videos, setDevice1Videos] = useState<any[]>([]);
-  const [device2Videos, setDevice2Videos] = useState<any[]>([]);
+  const [clientVectors, setClientVectors] = useState<Record<string, number[]>>(
+    {}
+  );
+  const [videos, setVideos] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(false);
-  const [activeVideoIndexes1, setActiveVideoIndexes1] = useState<number[]>([]);
-  const [activeVideoIndexes2, setActiveVideoIndexes2] = useState<number[]>([]);
 
-  const fetchVideos = async () => {
-    setLoading(true);
-    try {
-      const { data: device1Data, error: err1 } = await supabase
-        .from("videos")
-        .select("url")
-        .gte("id", 70)
-        .lte("id", 80);
-      if (err1) throw err1;
-      setDevice1Videos(device1Data || []);
+  useEffect(() => {
+    const fetchClientVectors = async () => {
+      try {
+        const res = await fetch(USER_VECTOR_URL);
+        const data = await res.json();
+        setClientVectors(data.client_vectors || {});
+      } catch (err) {
+        console.warn("Error fetching client vectors:", err);
+      }
+    };
 
-      const { data: device2Data, error: err2 } = await supabase
-        .from("videos")
-        .select("url")
-        .gte("id", 70)
-        .lte("id", 80);
-      if (err2) throw err2;
-      setDevice2Videos(device2Data || []);
-    } catch (error) {
-      console.warn("Error fetching videos:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchClientVectors();
+    const interval = setInterval(fetchClientVectors, TIMER);
+    return () => clearInterval(interval);
+  }, []);
 
-  const renderCover = (
-    videoUrl: string,
-    index: number,
-    activeIndexes: number[]
-  ) => {
-    const isActive = activeIndexes.includes(index);
-    return (
-      <View style={styles.videoCard}>
-        <Video
-          source={{ uri: videoUrl }}
-          style={styles.video}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay={isActive}
-          isLooping
-          isMuted
-          useNativeControls={false}
-          posterSource={{ uri: videoUrl }}
-        />
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (Object.keys(clientVectors).length === 0) return;
+      setLoading(true);
+      const newVideos: Record<string, any[]> = {};
+
+      try {
+        for (const clientId of Object.keys(clientVectors)) {
+          const userVector = clientVectors[clientId];
+          if (!userVector) continue;
+
+          // 1) Call /recommend endpoint
+          const res = await fetch(RECOMMEND_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_vector: userVector, top_k: 6 }),
+          });
+
+          const data = await res.json();
+          const topVideos = data.recommendations || [];
+
+          // 2) Fetch gen_vector from Supabase
+          const videoIds = topVideos.map((v: any) => v.id);
+          const { data: vectorData, error } = await supabase
+            .from("videos")
+            .select("id, gen_vector, url")
+            .in("id", videoIds);
+
+          if (error) throw error;
+
+          // 3) Map gen_vector back to videos
+          const enrichedVideos = topVideos.map((v: any) => {
+            const match = vectorData?.find((d: any) => d.id === v.id);
+            return { ...v, vector: match?.gen_vector || userVector };
+          });
+
+          newVideos[clientId] = enrichedVideos;
+        }
+        setVideos(newVideos);
+      } catch (err) {
+        console.warn("Error fetching recommendations or vectors:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecommendations();
+  }, [clientVectors]);
+
+  const renderCover = (videoUrl: string, rank: number) => (
+    <View style={styles.videoCard}>
+      {/* Rank label */}
+      <View style={styles.rankLabel}>
+        <Text style={styles.rankText}>{rank + 1}</Text>
       </View>
-    );
-  };
 
-  const viewabilityConfig = { itemVisiblePercentThreshold: 50 };
-
-  const onViewableItemsChanged1 = useRef(({ viewableItems }: any) => {
-    setActiveVideoIndexes1(viewableItems.map((item: any) => item.index));
-  }).current;
-
-  const onViewableItemsChanged2 = useRef(({ viewableItems }: any) => {
-    setActiveVideoIndexes2(viewableItems.map((item: any) => item.index));
-  }).current;
+      <Video
+        source={{ uri: videoUrl }}
+        style={styles.video}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay={true}
+        isLooping
+        isMuted
+        useNativeControls={false}
+        posterSource={{ uri: videoUrl }}
+      />
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+    <View style={{ flex: 1, backgroundColor: "#121212" }}>
+      <TouchableOpacity
+        style={[styles.backButton, { backgroundColor: "#2563EB" }]}
+        onPress={() => router.back()}
+      >
         <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>
 
-      <Text style={styles.title}>Federated Learning Videos</Text>
+      {loading && <ActivityIndicator color="#fff" />}
+      <Text style={styles.title}>Federated Learning Analytics</Text>
 
-      <TouchableOpacity style={styles.fetchButton} onPress={fetchVideos}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.fetchText}>Fetch Videos 70-80</Text>
-        )}
-      </TouchableOpacity>
+      <FlatList
+        data={Object.keys(clientVectors)}
+        keyExtractor={(clientId) => clientId}
+        contentContainerStyle={{ paddingTop: 80, paddingHorizontal: 16 }}
+        renderItem={({ item: clientId }) => {
+          const clientVideos = videos[clientId] || [];
+          const userVec = clientVectors[clientId] || [];
 
-      <View style={styles.listsContainer}>
-        <View style={styles.listColumn}>
-          <Text style={styles.deviceLabel}>Device 1</Text>
-          <EmbeddingGraph
-            videoEmbeddings={[
-              [0.1, 0.3, 0.6, 0.8],
-              [0.03, 0.1, 0.6, 0.2],
-              [0.1, 0.7, 0.3, 0.9],
-            ]}
-            userEmbedding={[0.1, 0.3, 0.6, 0.7]}
-          />
-          <View style={styles.spacer}></View>
+          return (
+            <View style={styles.clientContainer}>
+              <Text style={styles.deviceLabel}>Device {clientId}</Text>
 
-          <FlatList
-            data={device1Videos}
-            renderItem={({ item, index }) =>
-              renderCover(item.url, index, activeVideoIndexes1)
-            }
-            keyExtractor={(item, idx) => `d1-${idx}`}
-            showsVerticalScrollIndicator={false}
-            initialNumToRender={3}
-            windowSize={5}
-            onViewableItemsChanged={onViewableItemsChanged1}
-            viewabilityConfig={viewabilityConfig}
-          />
-        </View>
+              <EmbeddingGraph
+                videoEmbeddings={clientVideos.map((v) => v.vector || userVec)}
+                userEmbedding={userVec}
+              />
 
-        <View style={styles.listColumn}>
-          <Text style={styles.deviceLabel}>Device 2</Text>
-          <EmbeddingGraph
-            videoEmbeddings={[
-              [0.1, 0.3, 0.6, 0.8, 3],
-              [0.03, 0.1, 0.6, 0.2, 4],
-              [0.1, 0.7, 0.3, 0.9, 1],
-              [0.2, 0.1, 0.3, 0.9, 0.7],
-            ]}
-            userEmbedding={[0.1, 0.3, 0.6, 0.7, 0.3]}
-          />
-          <View style={styles.spacer}></View>
-          <FlatList
-            data={device2Videos}
-            renderItem={({ item, index }) =>
-              renderCover(item.url, index, activeVideoIndexes2)
-            }
-            keyExtractor={(item, idx) => `d2-${idx}`}
-            showsVerticalScrollIndicator={false}
-            initialNumToRender={3}
-            windowSize={5}
-            onViewableItemsChanged={onViewableItemsChanged2}
-            viewabilityConfig={viewabilityConfig}
-          />
-        </View>
-      </View>
+              <FlatList
+                data={clientVideos}
+                renderItem={({ item, index }) => renderCover(item.url, index)}
+                keyExtractor={(item, idx) => `${clientId}-video-${idx}`}
+                numColumns={2}
+                scrollEnabled={false} // keep vertical scroll in outer FlatList
+                columnWrapperStyle={{
+                  justifyContent: "space-between",
+                  marginBottom: 12,
+                }}
+                contentContainerStyle={{ paddingBottom: 16 }}
+              />
+            </View>
+          );
+        }}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 80,
-    paddingHorizontal: 20,
-    backgroundColor: "#121212",
+  backButton: {
+    position: "absolute",
+    top: 40,
+    left: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    zIndex: 9999,
+  },
+  backText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  clientContainer: {
+    marginBottom: 24,
+  },
+  deviceLabel: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 8,
+    color: "#E5E7EB",
+    textAlign: "center",
+  },
+  videoCard: {
+    width: COVER_WIDTH,
+    height: COVER_HEIGHT,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#1f1f1f",
+  },
+  video: {
+    width: "100%",
+    height: "100%",
   },
   title: {
     fontSize: 26,
     fontWeight: "700",
     color: "#fff",
+    paddingTop: 30,
     marginBottom: 16,
     textAlign: "center",
   },
-  backButton: {
+  rankLabel: {
     position: "absolute",
-    top: 40,
-    left: 20,
-    padding: 8,
-    backgroundColor: "#1f1f1f",
-    borderRadius: 10,
-  },
-  backText: { color: "#fff", fontWeight: "600" },
-  fetchButton: {
+    top: 6,
+    left: 6,
     backgroundColor: "#2563EB",
-    padding: 12,
     borderRadius: 12,
-    marginBottom: 16,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    zIndex: 10,
   },
-  fetchText: { color: "#fff", fontWeight: "600", textAlign: "center" },
-  listsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  listColumn: { flex: 1, marginHorizontal: 5 },
-  deviceLabel: {
-    fontSize: 18,
+  rankText: {
+    color: "#fff",
     fontWeight: "700",
-    marginBottom: 10,
-    color: "#E5E7EB",
-    textAlign: "center",
-  },
-  videoCard: {
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 12,
-    backgroundColor: "#1f1f1f",
-  },
-  video: {
-    width: COVER_WIDTH,
-    height: COVER_HEIGHT,
-  },
-  spacer: {
-    marginBottom: 12,
+    fontSize: 12,
   },
 });

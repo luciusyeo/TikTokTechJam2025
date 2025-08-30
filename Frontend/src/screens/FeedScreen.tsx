@@ -8,14 +8,16 @@ import {
   NativeSyntheticEvent,
   Text,
   TouchableOpacity,
+  Alert,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFeed } from "../state";
 import {
   fetchFeed,
   getTotalVideoCount,
   fetchRecommendedFeed,
 } from "../lib/feed";
-import { initializeML } from "../lib/ml";
+import { initializeML, resetMLData } from "../lib/ml";
 import { Video } from "../types";
 import { buildUserVector } from "../../utils/vectorUtils";
 import { fetchRecommendations } from "../lib/api";
@@ -44,6 +46,44 @@ export default function FeedScreen() {
 
   const feedLoadedRef = useRef(false);
 
+  const clearAllStorage = useCallback(async () => {
+    Alert.alert(
+      "Clear All Data",
+      "This will clear all stored data including your video preferences, interactions, and ML recommendations. This action cannot be undone.\n\nAre you sure you want to continue?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Clear all AsyncStorage keys used by the app
+              await AsyncStorage.multiRemove([
+                'video_interactions',
+                'count', 
+                'vector_arrays'
+              ]);
+              
+              // Reset ML data and cache
+              await resetMLData();
+              
+              setCurrentUserVector([]);
+              
+              Alert.alert("Success", "All local data has been cleared.");
+              console.log("All local storage data cleared successfully");
+            } catch (error) {
+              console.error("Failed to clear storage:", error);
+              Alert.alert("Error", "Failed to clear some data. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  }, [setCurrentUserVector]);
+
   useEffect(() => {
     const loadInitialFeed = async () => {
       if (feedLoadedRef.current) return;
@@ -70,7 +110,7 @@ export default function FeedScreen() {
           const userVector = await buildUserVector();
           setCurrentUserVector(userVector);
 
-          const recommendations = await fetchRecommendations(userVector, 5);
+          const recommendations = await fetchRecommendations(userVector, 10);
           console.log(
             "Recommendations received:",
             recommendations.recommendations.length
@@ -82,6 +122,7 @@ export default function FeedScreen() {
             );
             initialVideos = await fetchRecommendedFeed(videoIds);
             console.log("Loaded recommended videos:", initialVideos.length);
+            console.log("Video IDs returned:", initialVideos.map((v) => v.id)); // Log video IDs
           }
         } catch (recommendationError) {
           console.warn(
@@ -94,12 +135,14 @@ export default function FeedScreen() {
           initialVideos = await fetchFeed(0, 10);
         }
 
+        console.log("Video IDs returned after fallback:", initialVideos.map((v) => v.id)); // Log video IDs from fallback
+
         setVideos(initialVideos);
 
         const totalCount = getTotalVideoCount();
         setHasMoreVideos(
           initialVideos.length > 0 &&
-            (initialVideos.length < totalCount || initialVideos.length === 5)
+            (initialVideos.length < totalCount || initialVideos.length === 10)
         );
 
         feedLoadedRef.current = true;
@@ -149,6 +192,7 @@ export default function FeedScreen() {
             if (newVideoIds.length > 0) {
               moreVideos = await fetchRecommendedFeed(newVideoIds);
               console.log(`Loaded ${moreVideos.length} new recommended videos`);
+              console.log("Video IDs returned from recommendations:", moreVideos.map((v) => v.id)); // Log video IDs
             } else {
               console.log(
                 "All recommended videos already loaded, no new videos."
@@ -167,10 +211,12 @@ export default function FeedScreen() {
         console.log("No user vector available, using fallback feed loading...");
       }
 
+      // Fallback to loading more videos from the default feed
       if (moreVideos.length === 0) {
         console.log("Using fallback feed loading for more videos...");
         const startIndex = videos.length;
         moreVideos = await fetchFeed(startIndex, 10); // Fetch 10 videos from the default feed
+        console.log("Video IDs returned from fallback:", moreVideos.map((v) => v.id)); // Log video IDs
       }
 
       const uniqueVideos = moreVideos.filter(
@@ -213,7 +259,6 @@ export default function FeedScreen() {
         // console.log(`Active video index: ${activeIndex}, Total videos loaded: ${videos.length}`);
 
         // Load more videos only when the last item is viewed
-        // Ensure we're not in the process of loading more videos
         if (activeIndex === videos.length - 1 && !isLoadingMore) {
           console.log(
             `User reached the last video: ${activeIndex}, loading more...`
@@ -323,6 +368,12 @@ export default function FeedScreen() {
       >
         <Text style={{ color: "#fff", fontWeight: "bold" }}>Analytics</Text>
       </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.clearStorageButton}
+        onPress={clearAllStorage}
+      >
+        <Text style={{ color: "#fff", fontWeight: "bold" }}>Clear Data</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -340,6 +391,16 @@ const styles = StyleSheet.create({
     top: 50,
     right: 30,
     backgroundColor: "#007AFF",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    elevation: 5,
+  },
+  clearStorageButton: {
+    position: "absolute",
+    top: 110,
+    right: 30,
+    backgroundColor: "#FF3B30",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 25,

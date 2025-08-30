@@ -32,11 +32,8 @@ export const trainModel = async (
     verbose: 0,
   });
 
-  // Get updated weights as array of tf.Tensors
   const updatedWeights = model.getWeights();
 
-  //   // Optionally convert to raw JS arrays to send to server
-  //   const weightsArrays = await Promise.all(updatedWeights.map((w) => w.array()));
 
   return updatedWeights;
 };
