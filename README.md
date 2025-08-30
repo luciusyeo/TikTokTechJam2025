@@ -30,6 +30,9 @@ The project addresses the challenge of creating personalized video recommendatio
 - **Noisy Client Detection**: Automatic identification and mitigation of unreliable participants
 - **Advanced Graph Analytics**: Real-time trust relationship visualization and monitoring
 - **Federated Learning System**: Privacy-preserving ML model training across distributed clients
+- **Differential Privacy**: Gaussian noise addition, weight clipping, and random subsetting for client privacy
+- **Privacy-Preserving Weight Vectors**: Client embeddings stored locally with privacy-preserving techniques
+- **Randomized Recommendations**: 20% randomness injection in recommendations to prevent filter bubbles
 - **Video Processing Pipeline**: Automated video compression, frame extraction, and embedding generation
 - **Vector Similarity Matching**: CLIP-based video embeddings for content understanding
 - **Real-time Recommendations**: FastAPI endpoints for personalized video suggestions
@@ -147,9 +150,15 @@ src/
 ```
 backend/
 ├── main.py                     # FastAPI application and federated learning coordinator
+│                              # - Trust-weighted model aggregation
+│                              # - 20% randomness in recommendations  
+│                              # - Client weight vector storage
 ├── model.py                    # Binary MLP neural network definition
 ├── trust_graph_utils.py        # NetworkX-based trust graph operations and client scoring
-├── local_api.py                # Device-specific API endpoints
+├── local_api.py                # Device-specific API endpoints with differential privacy
+│                              # - Weight clipping (L2 norm ≤ 1.5)
+│                              # - Gaussian noise addition (σ=0.1)
+│                              # - Random weight subsetting (90% retention)
 ├── config.py                   # Environment configuration
 └── requirements.txt            # Python dependencies
 
@@ -172,6 +181,14 @@ federated/
 4. **Noisy Client Mitigation**: Automatic detection and de-weighting of unreliable or malicious participants
 5. **Privacy Preservation**: Raw user data never leaves the device
 6. **Personalization**: Global model provides personalized recommendations with improved robustness
+
+### Privacy-Preserving Features
+1. **Differential Privacy Implementation**:
+   - **Weight Clipping**: L2 norm clipping (max norm: 1.5) prevents gradient explosion attacks
+   - **Gaussian Noise Addition**: Random noise (σ=0.1) added to model weights before transmission
+   - **Random Subsetting**: Only 90% of weights transmitted (10% zeroed out) for additional privacy
+2. **Client Weight Vector Storage**: User preference vectors (16-dimensional embeddings) kept locally
+3. **Recommendation Randomness**: 20% of recommendations are randomly selected to prevent filter bubbles and enhance exploration
 
 ### Video Understanding
 1. **Content Extraction**: CLIP embeddings capture video semantic content
