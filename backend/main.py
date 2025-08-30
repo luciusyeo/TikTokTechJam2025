@@ -81,18 +81,33 @@ def get_global_model():
 def update_model(update: ModelUpdate):
     global client_updates, global_model_state
 
-    client_updates[update.client_id] = [np.array(w) for w in update.weights]
+    client_weights = [np.array(w) for w in update.weights]
+
+    # Initialize list for this client if not present
+    if update.client_id not in client_updates:
+        client_updates[update.client_id] = []
+    client_updates[update.client_id].append(np.array(client_weights, dtype=object))
 
     # Federated averaging
     if len(client_updates) == expected_clients:
-        all_weights = list(client_updates.values())
-        new_weights = []
+        all_client_weights = []
 
-        for weights_per_layer in zip(*all_weights):
-            new_weights.append(np.mean(weights_per_layer, axis=0))
+        # Flatten updates per client (average multiple submissions from same client)
+        for updates_per_client in client_updates.values():
+            # Average multiple submissions per client
+            client_avg = []
+            for layer_weights in zip(*updates_per_client):
+                client_avg.append(np.mean(layer_weights, axis=0))
+            all_client_weights.append(client_avg)
+
+        # Federated averaging across all clients
+        new_weights = []
+        for layer_weights in zip(*all_client_weights):
+            new_weights.append(np.mean(layer_weights, axis=0))
 
         global_model.set_weights(new_weights)
         global_model_state = new_weights
+        
         client_updates = {}  # reset for next round
 
         return {"status": "Aggregated", "new_global_model": "ready"}
