@@ -20,6 +20,7 @@ global_model = BinaryMLP(input_dim=32, hidden_dim= 128)  # TODO: adjust input_di
 global_model_state = None  # list of numpy arrays
 expected_clients = 1   # how many devices you expect in this round
 client_updates: Dict[str, List[np.ndarray]] = {}  # store weights per client
+client_vectors: Dict[str, np.ndarray] = {}
 
 # -----------------------------
 # Pydantic schemas
@@ -79,9 +80,14 @@ def get_global_model():
 
 @app.post("/update_model")
 def update_model(update: ModelUpdate):
-    global client_updates, global_model_state
+    global client_updates, global_model_state, client_vectors
 
     client_weights = [np.array(w) for w in update.weights]
+
+    # Extract the first 16 elements as the user vector
+    user_vector = np.array(client_weights[0][0, :16], dtype=np.float32)
+    client_vectors[update.client_id] = user_vector
+    print("client", update.client_id, ": ", user_vector)
 
     # Initialize list for this client if not present
     if update.client_id not in client_updates:
@@ -107,7 +113,7 @@ def update_model(update: ModelUpdate):
 
         global_model.set_weights(new_weights)
         global_model_state = new_weights
-        
+
         client_updates = {}  # reset for next round
 
         return {"status": "Aggregated", "new_global_model": "ready"}
@@ -140,3 +146,10 @@ def recommend(req: RecommendRequest):
     top_videos = [{"id": vid, "url": url} for vid, _, url in scores[:req.top_k]]
 
     return {"recommendations": top_videos}
+
+@app.get("/user_vector")
+def get_user_vectors():
+    # Convert all np.ndarrays to lists for JSON serialization
+    all_vectors = {user_id: vec.tolist() for user_id, vec in client_vectors.items()}
+    
+    return {"client_vectors": all_vectors}
