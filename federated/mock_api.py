@@ -1,3 +1,4 @@
+import json
 import keras
 import torch
 from torchvision.io import read_video
@@ -13,20 +14,28 @@ from sklearn.metrics import accuracy_score
 embedding_dir = '/Users/luciusyeojunjie/Desktop/TikTokTechJam2025/federated/data'
 
 def load_from_db():
-    embedding_paths = list(paths.list_files(embedding_dir, validExts=(".npy",)))
-    
+    with open(embedding_dir+"/animals.json", 'r') as f:
+        dataAnimals = json.load(f)
+
+    with open(embedding_dir+"/nature.json", 'r') as f:
+        dataNature = json.load(f)
+
     X_list, y_list = [], []
 
-    for file_path in embedding_paths:
-        embedding = np.load(file_path)
-        X_list.append(embedding)
-        
-        label_str = os.path.splitext(os.path.basename(file_path))[0]
-        label = int(label_str)
-        y_list.append(label)
+    # Flatten nested lists
+    flat_animals = [item for sublist in dataAnimals for item in sublist]
+    flat_nature = [item for sublist in dataNature for item in sublist]
+
+    for x in flat_animals:
+        X_list.append(x)
+        y_list.append(1)
+
+    for x in flat_nature:
+        X_list.append(x)
+        y_list.append(0)
 
     X = np.array(X_list)
-    y = np.array([1 if label <= 5 else 0 for label in y_list], dtype=np.float32)
+    y = np.array(y_list)
     
     return X, y
 

@@ -9,7 +9,6 @@ def load(test_size=0.1):
     """
     Load vector embeddings and labels, flatten embeddings, 
     convert labels to binary (1 if <=5 else 0), and split into train/test sets.
-    
     """
 
     X, y =  load_from_db()

@@ -6,7 +6,7 @@ from keras import backend as K
 from mlp_model import build_binary_mlp
 from utils import weight_scaling_factor, scale_model_weights, sum_scaled_weights, test_model
 
-def federated_training(clients_batched, test_batched, input_dim, comm_rounds=10, lr=0.01):
+def federated_training(clients_batched, test_batched, input_dim, comm_rounds=20, lr=0.01):
     global_model = build_binary_mlp(input_dim)
     global_model.compile(loss='binary_crossentropy', optimizer=SGD(learning_rate=lr, momentum=0.9), metrics=['accuracy'])
 
