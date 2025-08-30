@@ -1,8 +1,6 @@
 import React from "react";
-import { View, Text, StyleSheet, Dimensions } from "react-native";
+import { View, Text, useWindowDimensions } from "react-native";
 import { Video } from "../types";
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface VideoCardProps {
   video: Video;
@@ -11,80 +9,30 @@ interface VideoCardProps {
 }
 
 export default function VideoCard({ video, isActive, index }: VideoCardProps) {
+  const { width, height } = useWindowDimensions();
+  
   return (
-    <View style={styles.container}>
-      <Text style={styles.placeholder}>Video: {video.id}</Text>
-      <Text style={styles.caption}>{video.caption}</Text>
-      <Text style={styles.author}>@{video.author.name}</Text>
-      <Text style={styles.stats}>
-        ❤️ {video.stats.likes} 💬 {video.stats.comments}
-      </Text>
-      {isActive && <Text style={styles.activeIndicator}>▶️ PLAYING</Text>}
+    <View className="flex-1 bg-black items-center justify-center" style={{ width, height }}>
+      <Text className="text-white text-2xl font-bold mb-2">Video: {video.id}</Text>
+      <Text className="text-white text-lg mb-1">{video.caption}</Text>
+      <Text className="text-gray-400 mb-4">@{video.author.name}</Text>
+      <View className="flex-row gap-4 mb-6">
+        <Text className="text-white">❤️ {video.stats.likes}</Text>
+        <Text className="text-white">💬 {video.stats.comments}</Text>
+      </View>
+      {isActive && (
+        <Text className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium mb-4">
+          ▶️ PLAYING
+        </Text>
+      )}
       
       {/* Placeholder for future video player */}
-      <View style={styles.videoPlaceholder}>
-        <Text style={styles.videoText}>
+      <View className="bg-gray-800 p-6 rounded-lg items-center justify-center w-5/6">
+        <Text className="text-white text-center text-lg">
           🎬 Video Player{"\n"}
-          (expo-av implementation pending)
+          <Text className="text-gray-400 text-sm">(expo-av implementation pending)</Text>
         </Text>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    width: screenWidth,
-    height: screenHeight,
-    backgroundColor: "#111",
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  placeholder: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 20,
-  },
-  caption: {
-    fontSize: 16,
-    color: "#fff",
-    textAlign: "center",
-    marginHorizontal: 20,
-    marginBottom: 10,
-  },
-  author: {
-    fontSize: 14,
-    color: "#ccc",
-    marginBottom: 10,
-  },
-  stats: {
-    fontSize: 14,
-    color: "#fff",
-    marginBottom: 10,
-  },
-  activeIndicator: {
-    position: "absolute",
-    top: 60,
-    right: 20,
-    fontSize: 16,
-    color: "#ff0040",
-    fontWeight: "bold",
-  },
-  videoPlaceholder: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-  },
-  videoText: {
-    fontSize: 16,
-    color: "#888",
-    textAlign: "center",
-  },
-});
