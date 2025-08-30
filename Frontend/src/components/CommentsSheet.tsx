@@ -1,10 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
 import BottomSheet, { 
   BottomSheetBackdrop, 
   BottomSheetFlatList, 
   BottomSheetTextInput 
 } from "@gorhom/bottom-sheet";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 import { useFeed } from "../state";
 import { fetchComments, sendComment } from "../lib/feed";
 import { Comment } from "../types";
@@ -15,6 +23,10 @@ export default function CommentsSheet({}: CommentsSheetProps) {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  
+  // Animation values
+  const animatedIndex = useSharedValue(-1);
   
   const { 
     isCommentsOpen, 
@@ -26,7 +38,7 @@ export default function CommentsSheet({}: CommentsSheetProps) {
     bumpCommentCount 
   } = useFeed();
 
-  const snapPoints = useMemo(() => ["40%", "80%"], []);
+  const snapPoints = useMemo(() => ["42%", "85%"], []);
 
   const currentComments = useMemo(() => {
     return currentVideoId ? commentsCache[currentVideoId] || [] : [];
@@ -61,12 +73,16 @@ export default function CommentsSheet({}: CommentsSheetProps) {
   };
 
   const handleSendComment = async () => {
-    if (!inputText.trim() || !currentVideoId) return;
+    if (!inputText.trim() || !currentVideoId || isSending) return;
     
     const commentText = inputText.trim();
     setInputText("");
+    setIsSending(true);
 
     try {
+      // Haptic feedback on send
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
       // Optimistic update
       const optimisticComment: Comment = {
         id: `temp_${Date.now()}`,
@@ -89,14 +105,21 @@ export default function CommentsSheet({}: CommentsSheetProps) {
 
     } catch (error) {
       console.error("Failed to send comment:", error);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", "Failed to send comment. Please try again.");
       // Could implement retry logic here
+    } finally {
+      setIsSending(false);
     }
   };
 
-  const handleSheetChanges = useCallback((index: number) => {
+  const handleSheetChanges = useCallback(async (index: number) => {
+    animatedIndex.value = index;
     if (index === -1) {
+      await Haptics.selectionAsync();
       closeComments();
+    } else if (index >= 0) {
+      await Haptics.selectionAsync();
     }
   }, [closeComments]);
 
@@ -106,7 +129,11 @@ export default function CommentsSheet({}: CommentsSheetProps) {
         {...props}
         appearsOnIndex={0}
         disappearsOnIndex={-1}
-        opacity={0.5}
+        opacity={0.7}
+        enableTouchThrough={false}
+        style={{
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        }}
       />
     ),
     []
@@ -125,23 +152,23 @@ export default function CommentsSheet({}: CommentsSheetProps) {
     return `${days}d`;
   };
 
-  const renderComment = useCallback(({ item }: { item: Comment }) => (
-    <View className="flex-row py-3 px-4">
-      <View className="w-8 h-8 rounded-full bg-gray-600 mr-3 items-center justify-center">
-        <Text className="text-white text-sm font-semibold">
+  const renderComment = useCallback(({ item, index }: { item: Comment; index: number }) => (
+    <View className="flex-row py-4 px-4 border-b border-gray-800/50">
+      <View className="w-10 h-10 rounded-full bg-blue-500 mr-3 items-center justify-center shadow-lg">
+        <Text className="text-white text-sm font-bold">
           {item.user.name[0].toUpperCase()}
         </Text>
       </View>
       <View className="flex-1">
-        <View className="flex-row items-center mb-1">
-          <Text className="text-white font-semibold mr-2">
+        <View className="flex-row items-center mb-2">
+          <Text className="text-white font-bold mr-2 text-sm">
             {item.user.name}
           </Text>
           <Text className="text-gray-400 text-xs">
             {formatTimeAgo(item.ts)}
           </Text>
         </View>
-        <Text className="text-white text-sm leading-5">
+        <Text className="text-white text-sm leading-6 opacity-90">
           {item.text}
         </Text>
       </View>
@@ -149,9 +176,12 @@ export default function CommentsSheet({}: CommentsSheetProps) {
   ), []);
 
   const renderEmptyState = () => (
-    <View className="flex-1 items-center justify-center py-8">
-      <Text className="text-gray-400 text-base">No comments yet</Text>
-      <Text className="text-gray-500 text-sm mt-1">Be the first to comment!</Text>
+    <View className="flex-1 items-center justify-center py-12">
+      <View className="w-16 h-16 rounded-full bg-gray-700 items-center justify-center mb-4">
+        <Text className="text-4xl">💬</Text>
+      </View>
+      <Text className="text-gray-300 text-lg font-semibold mb-2">No comments yet</Text>
+      <Text className="text-gray-400 text-sm text-center px-8">Be the first to share what you think!</Text>
     </View>
   );
 
@@ -163,18 +193,42 @@ export default function CommentsSheet({}: CommentsSheetProps) {
       onChange={handleSheetChanges}
       backdropComponent={renderBackdrop}
       enablePanDownToClose
-      backgroundStyle={{ backgroundColor: "#1a1a1a" }}
-      handleIndicatorStyle={{ backgroundColor: "#666" }}
+      backgroundStyle={{ 
+        backgroundColor: "#111111",
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        shadowColor: '#000',
+        shadowOffset: {
+          width: 0,
+          height: -4,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 12,
+      }}
+      handleIndicatorStyle={{ 
+        backgroundColor: "#666",
+        width: 50,
+        height: 4,
+      }}
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
+      animateOnMount={true}
     >
       <View className="flex-1">
-        {/* Header */}
-        <View className="px-4 py-3 border-b border-gray-700">
-          <Text className="text-white text-lg font-semibold text-center">
-            Comments
-          </Text>
+        {/* Header - Enhanced */}
+        <View className="px-4 py-4 border-b border-gray-700/50">
+          <View className="flex-row items-center justify-center">
+            <Text className="text-white text-xl font-bold text-center">
+              Comments
+            </Text>
+            <View className="ml-2 px-2 py-1 bg-gray-700 rounded-full">
+              <Text className="text-white text-xs font-semibold">
+                {currentComments.length}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Comments List */}
@@ -212,16 +266,27 @@ export default function CommentsSheet({}: CommentsSheetProps) {
             />
             <TouchableOpacity
               onPress={handleSendComment}
-              disabled={!inputText.trim()}
-              className={`px-4 py-2 rounded-full ${
-                inputText.trim() ? "bg-blue-600" : "bg-gray-600"
+              disabled={!inputText.trim() || isSending}
+              className={`px-6 py-3 rounded-full min-w-[80px] items-center ${
+                inputText.trim() && !isSending ? "bg-blue-500" : "bg-gray-600"
               }`}
+              style={{
+                shadowColor: inputText.trim() ? '#3B82F6' : 'transparent',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 4,
+              }}
             >
-              <Text className={`font-semibold ${
-                inputText.trim() ? "text-white" : "text-gray-400"
-              }`}>
-                Send
-              </Text>
+              {isSending ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className={`font-bold text-sm ${
+                  inputText.trim() ? "text-white" : "text-gray-400"
+                }`}>
+                  Send
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
