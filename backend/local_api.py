@@ -35,7 +35,7 @@ def train_local(data: ModelData):
     y = np.array(data.y, dtype=np.int32)
 
     # Train locally
-    model.model.fit(X, y, epochs=3, batch_size=16, verbose=0)
+    model.fit_with_dp(X, y, epochs=3, batch_size=16)
 
     # Get updated weights
     weights = [w.tolist() for w in model.model.get_weights()]
