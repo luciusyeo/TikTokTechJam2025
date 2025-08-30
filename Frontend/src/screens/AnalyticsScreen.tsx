@@ -4,7 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
+  ScrollView,
   Dimensions,
   ActivityIndicator,
 } from "react-native";
@@ -132,83 +132,90 @@ export default function AnalyticsScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#121212" }}>
+    <View style={styles.container}>
       <TouchableOpacity
-        style={[styles.backButton, { backgroundColor: "#2563EB" }]}
+        style={styles.backButton}
         onPress={() => router.back()}
       >
         <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>
 
-      {loading && <ActivityIndicator color="#fff" />}
-      <View style={{ paddingHorizontal: 16, marginTop: 30 }}>
-        {/* Title */}
-        <Text
-          style={{
-            fontSize: 26,
-            fontWeight: "700",
-            color: "#fff",
-            textAlign: "center",
-            marginBottom: 24,
-          }}
-        >
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#2563EB" />
+        </View>
+      )}
+
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.mainTitle}>
           Federated Learning Analytics
         </Text>
 
-        {/* TrustGraph with label */}
-        <View style={{ alignItems: "center" }}>
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "600",
-              color: "#fff",
-              marginBottom: 12,
-            }}
-          >
+        <View style={styles.trustGraphSection}>
+          <Text style={styles.sectionTitle}>
             Trust Graph
           </Text>
-          <TrustGraph data={trustGraphData} canvasSize={300} />
+          <View style={styles.trustGraphContainer}>
+            <TrustGraph data={trustGraphData} canvasSize={280} />
+          </View>
         </View>
-      </View>
 
-      <FlatList
-        data={Object.keys(clientVectors)}
-        keyExtractor={(clientId) => clientId}
-        contentContainerStyle={{ paddingTop: 2, paddingHorizontal: 16 }}
-        renderItem={({ item: clientId }) => {
+        {Object.keys(clientVectors).map((clientId, index) => {
           const clientVideos = videos[clientId] || [];
           const userVec = clientVectors[clientId] || [];
           return (
-            <View style={styles.clientContainer}>
-              <Text style={styles.deviceLabel}>Device {clientId}</Text>
+            <View key={clientId}>
+              {index > 0 && <View style={styles.deviceSeparator} />}
+              <View style={styles.deviceCard}>
+                <Text style={styles.deviceLabel}>Device {clientId}</Text>
 
-              <EmbeddingGraph
-                videoEmbeddings={clientVideos.map((v) => v.vector || userVec)}
-                userEmbedding={userVec}
-              />
+                <View style={styles.embeddingGraphContainer}>
+                  <EmbeddingGraph
+                    videoEmbeddings={clientVideos.map((v) => v.vector || userVec)}
+                    userEmbedding={userVec}
+                  />
+                </View>
 
-              <FlatList
-                data={clientVideos}
-                renderItem={({ item, index }) => renderCover(item.url, index)}
-                keyExtractor={(item, idx) => `${clientId}-video-${idx}`}
-                numColumns={2}
-                scrollEnabled={false}
-                columnWrapperStyle={{
-                  justifyContent: "space-between",
-                  marginBottom: 12,
-                }}
-                contentContainerStyle={{ paddingBottom: 16 }}
-              />
+                <View style={styles.videoGrid}>
+                  {Array.from({ length: Math.ceil(clientVideos.length / 2) }).map((_, rowIndex) => (
+                    <View key={`row-${rowIndex}`} style={styles.videoRow}>
+                      {clientVideos.slice(rowIndex * 2, rowIndex * 2 + 2).map((item, colIndex) => (
+                        <View key={`${clientId}-video-${rowIndex * 2 + colIndex}`}>
+                          {renderCover(item.url, rowIndex * 2 + colIndex)}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              </View>
             </View>
           );
-        }}
-        showsVerticalScrollIndicator={false}
-      />
+        })}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#121212",
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(18, 18, 18, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
   backButton: {
     position: "absolute",
     top: 40,
@@ -216,42 +223,103 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
+    backgroundColor: "#2563EB",
     zIndex: 9999,
   },
-  backText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  clientContainer: { marginBottom: 24 },
-  deviceLabel: {
-    fontSize: 18,
+  backText: { 
+    color: "#fff", 
+    fontWeight: "700", 
+    fontSize: 16 
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 100,
+    paddingBottom: 32,
+  },
+  mainTitle: {
+    fontSize: 28,
     fontWeight: "700",
-    marginBottom: 8,
+    color: "#fff",
+    textAlign: "center",
+    marginBottom: 32,
+  },
+  trustGraphSection: {
+    alignItems: "center",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+  },
+  trustGraphContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#fff",
+    marginBottom: 16,
+  },
+  deviceCard: {
+    backgroundColor: "#1a1a1a",
+    borderRadius: 16,
+    padding: 24,
+  },
+  deviceSeparator: {
+    height: 16,
+  },
+  deviceLabel: {
+    fontSize: 20,
+    fontWeight: "600",
+    marginBottom: 16,
     color: "#E5E7EB",
     textAlign: "center",
   },
+  embeddingGraphContainer: {
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  videoGrid: {
+    paddingTop: 8,
+  },
+  videoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
   videoCard: {
-    width: COVER_WIDTH,
+    width: COVER_WIDTH - 8,
     height: COVER_HEIGHT,
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#1f1f1f",
+    backgroundColor: "#2a2a2a",
+    borderWidth: 1,
+    borderColor: "#333",
   },
-  video: { width: "100%", height: "100%" },
-  title: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#fff",
-    paddingTop: 30,
-    marginBottom: 16,
-    textAlign: "center",
+  video: { 
+    width: "100%", 
+    height: "100%" 
   },
   rankLabel: {
     position: "absolute",
-    top: 6,
-    left: 6,
+    top: 8,
+    left: 8,
     backgroundColor: "#2563EB",
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
   },
-  rankText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+  rankText: { 
+    color: "#fff", 
+    fontWeight: "700", 
+    fontSize: 12 
+  },
 });

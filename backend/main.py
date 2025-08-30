@@ -16,7 +16,7 @@ supabase_client: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY
 
 # Global model init
 global_model = BinaryMLP(input_dim=32, hidden_dim= 128)
-expected_clients = 1   # how many devices you expect in this round
+expected_clients = 2   # how many devices you expect in this round
 trust_graph = create_trust_graph(expected_clients)
 noisy_id = "noisy"
 trust_graph.add_node(noisy_id, trust=0.2)
