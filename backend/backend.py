@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import torch
-from model import Recommender
+import tensorflow as tf
+from model import BinaryMLP
 from supabase import create_client, Client
 import config
+import numpy as np
 
 # -----------------------------
 # Supabase client
@@ -13,15 +14,15 @@ supabase_client: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY
 # -----------------------------
 # Global model in memory
 # -----------------------------
-global_model = Recommender()
-global_model_state = None  # latest weights as JSON
+global_model = BinaryMLP(input_dim=512)  # TODO: adjust input_dim for user+video concatenation
+global_model_state = None  # list of numpy arrays
 
 # -----------------------------
 # Pydantic schemas
 # -----------------------------
 class ModelUpdate(BaseModel):
     client_id: str
-    weights: dict
+    weights: list  # list of lists (numpy arrays) 
 
 class RecommendRequest(BaseModel):
     user_vector: list
@@ -32,7 +33,7 @@ class RecommendRequest(BaseModel):
 # -----------------------------
 def save_global_model(weights):
     supabase_client.table("global_models").insert({
-        "weights": weights
+        "weights": [w.tolist() for w in weights]  # store as JSON-friendly lists
     }).execute()
 
 def load_latest_global_model():
@@ -42,7 +43,7 @@ def load_latest_global_model():
         .limit(1) \
         .execute()
     if res.data:
-        return res.data[0]["weights"]
+        return [np.array(w) for w in res.data[0]["weights"]]
     return None
 
 # -----------------------------
@@ -55,34 +56,36 @@ def startup_event():
     global global_model, global_model_state
     weights = load_latest_global_model()
     if weights:
-        global_model.load_state_dict({k: torch.tensor(v) for k, v in weights.items()})
+        global_model.set_weights(weights)
         global_model_state = weights
         print("✅ Loaded latest global model from Supabase")
     else:
-        # save initial empty model
-        global_model_state = {k: v.tolist() for k, v in global_model.state_dict().items()}
-        save_global_model(global_model_state)
+        # save initial weights
+        initial_weights = global_model.get_weights()
+        save_global_model(initial_weights)
+        global_model_state = initial_weights
         print("⚡ Initialized first global model")
 
 @app.get("/get_global_model")
 def get_global_model():
-    return {"weights": global_model_state}
+    if global_model_state is None:
+        return {"weights": []}
+    return {"weights": [w.tolist() for w in global_model_state]}
 
 @app.post("/update_model")
 def update_model(update: ModelUpdate):
     global global_model, global_model_state
+    client_weights = [np.array(w) for w in update.weights]
 
-    # Load client weights
-    client_weights = {k: torch.tensor(v) for k, v in update.weights.items()}
-    global_dict = global_model.state_dict()
+    # Simple FedAvg: average element-wise
+    new_weights = []
+    if global_model_state is None:
+        return {"error": "Global model state is not initialized."}
+    for gw, cw in zip(global_model_state, client_weights):
+        new_weights.append((gw + cw) / 2.0)
 
-    # FedAvg: simple average
-    for k in global_dict.keys():
-        global_dict[k] = (global_dict[k] + client_weights[k]) / 2
-    global_model.load_state_dict(global_dict)
-
-    # Save versioned checkpoint in Supabase
-    global_model_state = {k: v.tolist() for k, v in global_model.state_dict().items()}
+    global_model.set_weights(new_weights)
+    global_model_state = new_weights
     save_global_model(global_model_state)
 
     return {"status": "global model updated, versioned in Supabase"}
@@ -90,39 +93,16 @@ def update_model(update: ModelUpdate):
 @app.post("/recommend")
 def recommend(req: RecommendRequest):
     global global_model
-    user_vec = torch.tensor(req.user_vector, dtype=torch.float32).unsqueeze(0)
+    user_vec = tf.convert_to_tensor([req.user_vector], dtype=tf.float32)
 
-    # Fetch videos from Supabase
     videos = supabase_client.table("videos").select("id, video_vector, url").execute().data
     scores = []
-
     for v in videos:
-        video_vec = torch.tensor(v["video_vector"], dtype=torch.float32).unsqueeze(0)
-        score = global_model(user_vec, video_vec).item()
+        video_vec = tf.convert_to_tensor([v["video_vector"]], dtype=tf.float32)
+        score = global_model.forward(user_vec, video_vec).numpy().item()
         scores.append((v["id"], score, v["url"]))
 
     scores.sort(key=lambda x: x[1], reverse=True)
     top_videos = [{"id": vid, "url": url} for vid, _, url in scores[:req.top_k]]
 
     return {"recommendations": top_videos}
-
-@app.get("/supabase_test")
-def supabase_test():
-    # 1️⃣ Insert a test video row
-    test_video = {
-        "video_vector": [0.1, 0.2, 0.3, 0.4],
-        "url": "https://example.com/test_vid.mp4"
-    }
-    supabase_client.table("videos").upsert(test_video).execute()
-
-    # 2️⃣ Fetch the video back
-    res = supabase_client.table("videos").select("*").execute()
-
-    return {
-        "message": "Supabase insert/fetch successful",
-        "data": res.data
-    }
-
-@app.get("/")
-def root():
-    return {"status": "FastAPI is running!"}
