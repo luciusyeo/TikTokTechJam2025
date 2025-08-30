@@ -1,6 +1,5 @@
 import { create } from "zustand";
-import { Video, Comment, UserEmbedding, VideoInteraction } from "./types";
-import * as tf from '@tensorflow/tfjs';
+import { Video, Comment } from "./types";
 
 type FeedState = {
   videos: Video[];
@@ -83,24 +82,3 @@ export const useFeed = create<FeedState>((set) => ({
   }),
 }));
 
-type MLState = {
-  model: tf.Sequential | null;
-  userEmbedding: UserEmbedding | null;
-  interactionHistory: VideoInteraction[];
-  isTraining: boolean;
-  isInitialized: boolean;
-  setMLState(state: Partial<MLState>): void;
-  addInteraction(interaction: VideoInteraction): void;
-};
-
-export const useMLState = create<MLState>((set) => ({
-  model: null,
-  userEmbedding: null,
-  interactionHistory: [],
-  isTraining: false,
-  isInitialized: false,
-  setMLState: (newState) => set(newState),
-  addInteraction: (interaction) => set((state) => ({
-    interactionHistory: [...state.interactionHistory, interaction]
-  })),
-}));

@@ -2,7 +2,6 @@ import React, { useEffect, useCallback, useRef, useState } from "react";
 import { View, StyleSheet, FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, Text } from "react-native";
 import { useFeed } from "../state";
 import { fetchFeed, getTotalVideoCount } from "../lib/feed";
-import { recordInteraction } from "../lib/ml";
 import { Video } from "../types";
 import VideoCard from "../components/VideoCard";
 import CommentsSheet from "../components/CommentsSheet";
@@ -17,7 +16,6 @@ export default function FeedScreen() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMoreVideos, setHasMoreVideos] = useState(true);
-  const watchTimeStartRef = useRef<number | null>(null);
 
   // Initial load - load first 2 videos
   useEffect(() => {
@@ -27,7 +25,6 @@ export default function FeedScreen() {
         setError(null);
         const initialVideos = await fetchFeed(0, 2);
         setVideos(initialVideos);
-        watchTimeStartRef.current = Date.now();
         
         // Check if there are more videos to load
         const totalCount = getTotalVideoCount();
@@ -79,23 +76,10 @@ export default function FeedScreen() {
     if (viewableItems.length > 0) {
       const activeIndex = viewableItems[0].index;
       if (activeIndex !== null && activeIndex !== index) {
-        // Record watch time for the previous video
-        if (watchTimeStartRef.current && videos[index]) {
-          const watchTime = (Date.now() - watchTimeStartRef.current) / 1000; // in seconds
-          const videoId = videos[index].id;
-          recordInteraction({ videoId, action: 'watch_time', value: watchTime, timestamp: Date.now() });
-        }
 
-        // Record swipe interaction
-        if (videos[index]) {
-          const videoId = videos[index].id;
-          const action = activeIndex > index ? 'swipe_up' : 'swipe_down';
-          recordInteraction({ videoId, action, value: 1, timestamp: Date.now() });
-        }
 
-        // Set new index and start time
+        // Set new index
         setIndex(activeIndex);
-        watchTimeStartRef.current = Date.now();
         
         // Trigger progressive loading when user is near the end
         // Load more when user reaches the second-to-last video

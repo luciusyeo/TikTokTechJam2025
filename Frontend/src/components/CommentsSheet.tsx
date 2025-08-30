@@ -16,7 +16,6 @@ import * as Haptics from "expo-haptics";
 import { useFeed } from "../state";
 import { fetchComments, sendComment } from "../lib/feed";
 import { Comment } from "../types";
-import { recordInteraction } from "../lib/ml";
 
 interface CommentsSheetProps {}
 
@@ -95,12 +94,6 @@ export default function CommentsSheet({}: CommentsSheetProps) {
       addComment(currentVideoId, optimisticComment);
       bumpCommentCount(currentVideoId);
 
-      recordInteraction({
-        videoId: currentVideoId,
-        action: 'comment',
-        value: 1,
-        timestamp: Date.now(),
-      });
 
       // Send to API
       const newComment = await sendComment(currentVideoId, commentText);

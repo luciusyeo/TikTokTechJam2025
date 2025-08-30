@@ -1,5 +1,3 @@
-import * as tf from '@tensorflow/tfjs';
-
 export type Video = {
   id: string;
   src: string; // file:/// local or https://
@@ -16,23 +14,9 @@ export type Comment = {
   ts: number; // epoch ms
 };
 
-// Types for ML functionality
-export interface UserEmbedding {
-  vector: number[];
-  lastUpdated: number;
-}
-
-export interface VideoInteraction {
+// Simplified type for like interactions only
+export interface VideoLike {
   videoId: string;
-  action: 'swipe_up' | 'swipe_down' | 'like' | 'unlike' | 'comment' | 'watch_time';
-  value: number; // 1 for positive actions, 0 for negative, watch time in seconds
+  isLiked: boolean;
   timestamp: number;
-  videoFeatures?: number[]; // Optional video embedding features
-}
-
-export interface MLModelState {
-  model: tf.Sequential | null;
-  isInitialized: boolean;
-  isTraining: boolean;
-  lastTrainingTime: number;
 }
