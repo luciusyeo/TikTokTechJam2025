@@ -198,30 +198,30 @@ A comprehensive, checkbox-driven plan to build the **auto-playing vertical feed*
 
 ## 5) Comments Sheet (Bottom Sheet + Input)
 
-* [ ] **Sheet component** `CommentsSheet.tsx`
+* [x] **Sheet component** `CommentsSheet.tsx`
 
-  * [ ] Use `@gorhom/bottom-sheet`
-  * [ ] `snapPoints`: `["40%","80%"]`
-  * [ ] `enablePanDownToClose`
-* [ ] **Data flow**
+  * [x] Use `@gorhom/bottom-sheet`
+  * [x] `snapPoints`: `["40%","80%"]`
+  * [x] `enablePanDownToClose`
+* [x] **Data flow**
 
-  * [ ] Open sheet with `videoId` set from Feed
-  * [ ] On first open per `videoId`, call `fetchComments(videoId)` and cache
-  * [ ] Render list (e.g., `BottomSheetFlatList`)
-* [ ] **Composer**
+  * [x] Open sheet with `videoId` set from Feed
+  * [x] On first open per `videoId`, call `fetchComments(videoId)` and cache
+  * [x] Render list (e.g., `BottomSheetFlatList`)
+* [x] **Composer**
 
-  * [ ] Text input + Send button
-  * [ ] `sendComment(videoId, text)` → optimistic append and `bumpCommentCount(videoId)`
-* [ ] **Keyboard handling**
+  * [x] Text input + Send button
+  * [x] `sendComment(videoId, text)` → optimistic append and `bumpCommentCount(videoId)`
+* [x] **Keyboard handling**
 
-  * [ ] Input remains visible when keyboard shows
-  * [ ] Dismiss on submit
+  * [x] Input remains visible when keyboard shows
+  * [x] Dismiss on submit
 
 **Acceptance**
 
-* [ ] Sheet opens/closes within 200ms with spring animation
-* [ ] Adding comment appends at top and clears input
-* [ ] Comment count on feed increments immediately
+* [x] Sheet opens/closes within 200ms with spring animation
+* [x] Adding comment appends at top and clears input
+* [x] Comment count on feed increments immediately
 
 ---
 

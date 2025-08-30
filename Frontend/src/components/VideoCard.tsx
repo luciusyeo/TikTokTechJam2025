@@ -20,7 +20,7 @@ interface VideoCardProps {
 
 export default function VideoCard({ video, isActive }: VideoCardProps) {
   const { width, height } = useWindowDimensions();
-  const { toggleLike } = useFeed();
+  const { toggleLike, openComments } = useFeed();
   const isMountedRef = useRef(true);
   
   // Create video player with configuration
@@ -87,6 +87,10 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
     toggleLike(video.id);
   };
 
+  const handleCommentsPress = () => {
+    openComments(video.id);
+  };
+
   const animatedHeartStyle = useAnimatedStyle(() => ({
     transform: [{ scale: heartScale.value }],
     opacity: heartOpacity.value,
@@ -145,6 +149,7 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
             </TouchableOpacity>
             
             <TouchableOpacity
+              onPress={handleCommentsPress}
               className="items-center"
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
