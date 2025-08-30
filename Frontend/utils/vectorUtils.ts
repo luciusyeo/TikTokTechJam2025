@@ -22,7 +22,7 @@ export async function buildUserVector(): Promise<number[]> {
 
   if (likedVideos.length === 0) {
     // If no liked videos, return zero vector of fixed size 1024
-    const emptyVector = Array(1024).fill(0);
+    const emptyVector = Array(16).fill(0);
     await saveUserVector(emptyVector);
     return emptyVector;
   }
@@ -34,7 +34,7 @@ export async function buildUserVector(): Promise<number[]> {
   const videoVectors: number[][] = await fetchVideoVectors(videoIds);
 
   // 5. Sum the vectors
-  let sumVector = Array(1024).fill(0);
+  let sumVector = Array(16).fill(0);
   likedVideos.forEach((_, idx) => {
     const vec = videoVectors[idx];
     if (vec) {
