@@ -216,60 +216,66 @@ export default function FeedScreen() {
     try {
       setIsLoadingMore(true);
 
+      // BEFORE STATE LOGGING
+      console.log("🔄 [LOAD MORE] Starting to load more videos...");
+      console.log("📊 [BEFORE] Current video count:", videos.length);
+      console.log("📋 [BEFORE] Current video IDs:", videos.map(v => v.id));
+      console.log("🎯 [BEFORE] User vector length:", currentUserVector?.length || 0);
+      console.log("📈 [BEFORE] Has more videos flag:", hasMoreVideos);
+
       let moreVideos: Video[] = [];
 
       if (currentUserVector && currentUserVector.length > 0) {
         try {
-          console.log("Loading more videos with updated user vector...");
+          console.log("🧠 [ML] Loading more videos with updated user vector...");
           const recommendations = await fetchRecommendations(
             currentUserVector,
             10
           );
 
-          console.log(
-            "Recommendations from API for more videos:",
-            recommendations.recommendations
-          );
+          console.log("🎯 [ML] Recommendations from API:", {
+            count: recommendations.recommendations.length,
+            videoIds: recommendations.recommendations.map(r => r.id)
+          });
 
           if (recommendations.recommendations.length > 0) {
             const videoIds = recommendations.recommendations.map(
               (rec) => rec.id
             );
-            console.log("[feed] Video IDs:", videoIds);
+            console.log("🔍 [ML] Recommended video IDs:", videoIds);
 
             const newVideoIds = videoIds.filter(
               (id) => !videos.find((v) => v.id === String(id))
             );
-            console.log("[feed] New video IDs after filtering:", newVideoIds);
+            console.log("✨ [ML] New video IDs after filtering duplicates:", newVideoIds);
 
             if (newVideoIds.length > 0) {
               moreVideos = await fetchRecommendedFeed(newVideoIds);
-              console.log(`Loaded ${moreVideos.length} new recommended videos`);
-              console.log("Video IDs returned from recommendations:", moreVideos.map((v) => v.id)); // Log video IDs
+              console.log(`✅ [ML] Successfully loaded ${moreVideos.length} new recommended videos`);
+              console.log("📝 [ML] New video IDs fetched:", moreVideos.map((v) => v.id));
             } else {
-              console.log(
-                "All recommended videos already loaded, no new videos."
-              );
+              console.log("⚠️ [ML] All recommended videos already loaded, no new videos.");
             }
           } else {
-            console.log("No recommendations found.");
+            console.log("❌ [ML] No recommendations found from API.");
           }
         } catch (recommendationError) {
           console.warn(
-            "Failed to get more recommendations, falling back to default feed:",
+            "🚨 [ML] Failed to get more recommendations, falling back to default feed:",
             recommendationError
           );
         }
       } else {
-        console.log("No user vector available, using fallback feed loading...");
+        console.log("📭 [FALLBACK] No user vector available, using fallback feed loading...");
       }
 
       // Fallback to loading more videos from the default feed
       if (moreVideos.length === 0) {
-        console.log("Using fallback feed loading for more videos...");
+        console.log("🔄 [FALLBACK] Using default feed loading for more videos...");
         const startIndex = videos.length;
-        moreVideos = await fetchFeed(startIndex, 10); // Fetch 10 videos from the default feed
-        console.log("Video IDs returned from fallback:", moreVideos.map((v) => v.id)); // Log video IDs
+        console.log("📍 [FALLBACK] Starting from index:", startIndex);
+        moreVideos = await fetchFeed(startIndex, 10);
+        console.log("📝 [FALLBACK] Video IDs fetched from default feed:", moreVideos.map((v) => v.id));
       }
 
       const uniqueVideos = moreVideos.filter(
@@ -277,19 +283,31 @@ export default function FeedScreen() {
           !videos.some((existingVideo) => existingVideo.id === newVideo.id)
       );
 
-      console.log(
-        "Total videos after adding new ones:",
-        [...videos, ...uniqueVideos].length
-      );
+      // AFTER STATE LOGGING
+      console.log("📊 [AFTER] Videos fetched from API/fallback:", moreVideos.length);
+      console.log("🔄 [AFTER] Unique videos after deduplication:", uniqueVideos.length);
+      console.log("📝 [AFTER] Unique video IDs to be added:", uniqueVideos.map(v => v.id));
 
       if (uniqueVideos.length > 0) {
-        setVideos([...videos, ...uniqueVideos]);
+        const newTotalVideos = [...videos, ...uniqueVideos];
+        console.log("✅ [SUCCESS] Adding videos to feed...");
+        console.log("📈 [SUCCESS] Total videos before update:", videos.length);
+        console.log("📈 [SUCCESS] Total videos after update:", newTotalVideos.length);
+        console.log("➕ [SUCCESS] Videos added:", uniqueVideos.length);
+        console.log("🎯 [SUCCESS] New video range:", `${videos.length + 1}-${newTotalVideos.length}`);
+        
+        setVideos(newTotalVideos);
       } else {
-        console.log("No unique videos to add, stopping further fetch.");
+        console.log("⚠️ [COMPLETE] No unique videos to add, stopping further fetch.");
+        console.log("🛑 [COMPLETE] Setting hasMoreVideos to false");
         setHasMoreVideos(false);
       }
+
+      console.log("🏁 [LOAD MORE] Completed loading more videos");
+      console.log("=" .repeat(60));
+
     } catch (error) {
-      console.error("Failed to load more videos:", error);
+      console.error("❌ [ERROR] Failed to load more videos:", error);
     } finally {
       setIsLoadingMore(false);
     }
