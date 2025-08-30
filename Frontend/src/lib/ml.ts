@@ -5,6 +5,7 @@ import { Video, VideoInteractions, VideoInteraction } from '../types';
 // Storage keys
 const VIDEO_INTERACTIONS_KEY = 'video_interactions';
 const MODEL_WEIGHTS_KEY = 'ml_model_weights';
+const COUNTER_KEY = 'count';
 
 // In-memory cache for video interactions
 let videoInteractions: VideoInteractions = {};
@@ -222,6 +223,51 @@ export async function recordInteraction(interaction: { videoId: string; action: 
     await recordLike(interaction.videoId, false);
   }
   // Ignore all other interaction types
+}
+
+// ============================================================================
+// SIMPLE COUNTER FUNCTIONS
+// ============================================================================
+
+/**
+ * Get current counter value
+ */
+export async function getCounter(): Promise<number> {
+  try {
+    const saved = await AsyncStorage.getItem(COUNTER_KEY);
+    return saved ? parseInt(saved) : 0;
+  } catch (error) {
+    console.error('Failed to get counter:', error);
+    return 0;
+  }
+}
+
+/**
+ * Increment counter by 1 and return new value
+ */
+export async function incrementCounter(): Promise<number> {
+  try {
+    const currentCount = await getCounter();
+    const newCount = currentCount + 1;
+    await AsyncStorage.setItem(COUNTER_KEY, newCount.toString());
+    console.log(`Counter incremented to ${newCount}`);
+    return newCount;
+  } catch (error) {
+    console.error('Failed to increment counter:', error);
+    return 0;
+  }
+}
+
+/**
+ * Reset counter to 0
+ */
+export async function resetCounter(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(COUNTER_KEY, '0');
+    console.log('Counter reset to 0');
+  } catch (error) {
+    console.error('Failed to reset counter:', error);
+  }
 }
 
 // ============================================================================
