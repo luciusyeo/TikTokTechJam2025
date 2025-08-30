@@ -11,15 +11,17 @@ import {
 import { useRouter } from "expo-router";
 import { Video, ResizeMode } from "expo-av";
 import EmbeddingGraph from "../components/EmbeddingGraph";
+import TrustGraph from "../components/TrustGraph";
 import { supabase } from "../lib/supabase";
 
 const { width } = Dimensions.get("window");
-const COVER_WIDTH = (width - 48) / 2; // 2 columns with spacing
-const COVER_HEIGHT = COVER_WIDTH * 0.75; // shorter videos
+const COVER_WIDTH = (width - 48) / 2;
+const COVER_HEIGHT = COVER_WIDTH * 0.75;
 const TIMER = 10 * 1000;
 
 const USER_VECTOR_URL = "http://localhost:8000/user_vector";
 const RECOMMEND_URL = "http://localhost:8000/recommend";
+const TRUST_GRAPH_URL = "http://localhost:8000/trust_graph";
 
 export default function AnalyticsScreen() {
   const router = useRouter();
@@ -27,8 +29,13 @@ export default function AnalyticsScreen() {
     {}
   );
   const [videos, setVideos] = useState<Record<string, any[]>>({});
+  const [trustGraphData, setTrustGraphData] = useState<{
+    nodes: any[];
+    edges: any[];
+  }>({ nodes: [], edges: [] });
   const [loading, setLoading] = useState(false);
 
+  // Fetch client vectors periodically
   useEffect(() => {
     const fetchClientVectors = async () => {
       try {
@@ -39,12 +46,12 @@ export default function AnalyticsScreen() {
         console.warn("Error fetching client vectors:", err);
       }
     };
-
     fetchClientVectors();
     const interval = setInterval(fetchClientVectors, TIMER);
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch recommendations per client vector
   useEffect(() => {
     const fetchRecommendations = async () => {
       if (Object.keys(clientVectors).length === 0) return;
@@ -56,26 +63,21 @@ export default function AnalyticsScreen() {
           const userVector = clientVectors[clientId];
           if (!userVector) continue;
 
-          // 1) Call /recommend endpoint
           const res = await fetch(RECOMMEND_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ user_vector: userVector, top_k: 6 }),
           });
-
           const data = await res.json();
           const topVideos = data.recommendations || [];
 
-          // 2) Fetch gen_vector from Supabase
           const videoIds = topVideos.map((v: any) => v.id);
           const { data: vectorData, error } = await supabase
             .from("videos")
             .select("id, gen_vector, url")
             .in("id", videoIds);
-
           if (error) throw error;
 
-          // 3) Map gen_vector back to videos
           const enrichedVideos = topVideos.map((v: any) => {
             const match = vectorData?.find((d: any) => d.id === v.id);
             return { ...v, vector: match?.gen_vector || userVector };
@@ -90,22 +92,37 @@ export default function AnalyticsScreen() {
         setLoading(false);
       }
     };
-
     fetchRecommendations();
   }, [clientVectors]);
 
+  // Fetch trust graph once
+  useEffect(() => {
+    const fetchTrustGraph = async () => {
+      try {
+        const res = await fetch(TRUST_GRAPH_URL);
+        const data = await res.json();
+        setTrustGraphData(data);
+        console.log("trust graph: ", data);
+      } catch (err) {
+        console.warn("Error fetching trust graph:", err);
+      }
+    };
+
+    fetchTrustGraph();
+    const interval = setInterval(fetchTrustGraph, TIMER);
+    return () => clearInterval(interval);
+  }, []);
+
   const renderCover = (videoUrl: string, rank: number) => (
     <View style={styles.videoCard}>
-      {/* Rank label */}
       <View style={styles.rankLabel}>
         <Text style={styles.rankText}>{rank + 1}</Text>
       </View>
-
       <Video
         source={{ uri: videoUrl }}
         style={styles.video}
         resizeMode={ResizeMode.COVER}
-        shouldPlay={true}
+        shouldPlay
         isLooping
         isMuted
         useNativeControls={false}
@@ -124,16 +141,43 @@ export default function AnalyticsScreen() {
       </TouchableOpacity>
 
       {loading && <ActivityIndicator color="#fff" />}
-      <Text style={styles.title}>Federated Learning Analytics</Text>
+      <View style={{ paddingHorizontal: 16, marginTop: 30 }}>
+        {/* Title */}
+        <Text
+          style={{
+            fontSize: 26,
+            fontWeight: "700",
+            color: "#fff",
+            textAlign: "center",
+            marginBottom: 24,
+          }}
+        >
+          Federated Learning Analytics
+        </Text>
+
+        {/* TrustGraph with label */}
+        <View style={{ alignItems: "center" }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontWeight: "600",
+              color: "#fff",
+              marginBottom: 12,
+            }}
+          >
+            Trust Graph
+          </Text>
+          <TrustGraph data={trustGraphData} canvasSize={300} />
+        </View>
+      </View>
 
       <FlatList
         data={Object.keys(clientVectors)}
         keyExtractor={(clientId) => clientId}
-        contentContainerStyle={{ paddingTop: 80, paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingTop: 2, paddingHorizontal: 16 }}
         renderItem={({ item: clientId }) => {
           const clientVideos = videos[clientId] || [];
           const userVec = clientVectors[clientId] || [];
-
           return (
             <View style={styles.clientContainer}>
               <Text style={styles.deviceLabel}>Device {clientId}</Text>
@@ -148,7 +192,7 @@ export default function AnalyticsScreen() {
                 renderItem={({ item, index }) => renderCover(item.url, index)}
                 keyExtractor={(item, idx) => `${clientId}-video-${idx}`}
                 numColumns={2}
-                scrollEnabled={false} // keep vertical scroll in outer FlatList
+                scrollEnabled={false}
                 columnWrapperStyle={{
                   justifyContent: "space-between",
                   marginBottom: 12,
@@ -174,14 +218,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     zIndex: 9999,
   },
-  backText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  clientContainer: {
-    marginBottom: 24,
-  },
+  backText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  clientContainer: { marginBottom: 24 },
   deviceLabel: {
     fontSize: 18,
     fontWeight: "700",
@@ -196,10 +234,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: "#1f1f1f",
   },
-  video: {
-    width: "100%",
-    height: "100%",
-  },
+  video: { width: "100%", height: "100%" },
   title: {
     fontSize: 26,
     fontWeight: "700",
@@ -218,9 +253,5 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     zIndex: 10,
   },
-  rankText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 12,
-  },
+  rankText: { color: "#fff", fontWeight: "700", fontSize: 12 },
 });
