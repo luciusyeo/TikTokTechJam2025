@@ -1,42 +1,36 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as tf from '@tensorflow/tfjs';
-import { Video } from '../types';
+import { Video, VideoInteractions, VideoInteraction } from '../types';
 
 // Storage keys
-const VIDEO_LIKES_KEY = 'video_likes';
+const VIDEO_INTERACTIONS_KEY = 'video_interactions';
 const MODEL_WEIGHTS_KEY = 'ml_model_weights';
 
-// Type for storing likes
-interface VideoLikes {
-  [videoId: string]: boolean; // true = liked, false = not liked
-}
-
-// In-memory cache for likes
-let videoLikes: VideoLikes = {};
+// In-memory cache for video interactions
+let videoInteractions: VideoInteractions = {};
 let isInitialized = false;
 
 /**
- * Initialize the like storage system
+ * Initialize the video interaction storage system
  */
 export async function initializeML(): Promise<void> {
   if (isInitialized) return;
 
   try {
-    // Load saved likes from storage
-    const savedLikes = await AsyncStorage.getItem(VIDEO_LIKES_KEY);
+    const savedInteractions = await AsyncStorage.getItem(VIDEO_INTERACTIONS_KEY);
     
-    if (savedLikes) {
-      videoLikes = JSON.parse(savedLikes);
-      console.log(`Loaded ${Object.keys(videoLikes).length} video likes from storage`);
+    if (savedInteractions) {
+      videoInteractions = JSON.parse(savedInteractions);
+      console.log(`Loaded ${Object.keys(videoInteractions).length} video interactions from storage`);
     } else {
-      videoLikes = {};
+      videoInteractions = {};
     }
 
     isInitialized = true;
-    console.log('Like storage system initialized successfully');
+    console.log('Video interaction storage system initialized successfully');
   } catch (error) {
-    console.error('Failed to initialize like storage system:', error);
-    videoLikes = {};
+    console.error('Failed to initialize video interaction storage system:', error);
+    videoInteractions = {};
     isInitialized = true;
   }
 }
@@ -50,16 +44,21 @@ export async function recordLike(videoId: string, isLiked: boolean): Promise<voi
   }
 
   try {
-    // Update in-memory cache
-    videoLikes[videoId] = isLiked;
+    // Update in-memory cache - liking a video automatically marks it as viewed
+    if (!videoInteractions[videoId]) {
+      videoInteractions[videoId] = { viewed: false, liked: false };
+    }
+    
+    videoInteractions[videoId].viewed = true; // Liking implies viewing
+    videoInteractions[videoId].liked = isLiked;
 
     // Save to storage
-    await AsyncStorage.setItem(VIDEO_LIKES_KEY, JSON.stringify(videoLikes));
+    await AsyncStorage.setItem(VIDEO_INTERACTIONS_KEY, JSON.stringify(videoInteractions));
     
-    console.log(`Recorded ${isLiked ? 'like' : 'unlike'} for video ${videoId}`);
+    console.log(`Recorded ${isLiked ? 'like' : 'unlike'} for video ${videoId} (also marked as viewed)`);
     
     // Check if we should trigger training
-    const totalInteractions = Object.keys(videoLikes).length;
+    const totalInteractions = Object.keys(videoInteractions).length;
     if (shouldTriggerTraining(totalInteractions)) {
       console.log(`Triggering model training after ${totalInteractions} interactions`);
       
@@ -76,6 +75,30 @@ export async function recordLike(videoId: string, isLiked: boolean): Promise<voi
 }
 
 /**
+ * Record that a video was viewed (without liking/unliking)
+ */
+export async function recordViewed(videoId: string): Promise<void> {
+  if (!isInitialized) {
+    await initializeML();
+  }
+
+  try {
+    // Update in-memory cache - only mark as viewed if not already recorded
+    if (!videoInteractions[videoId]) {
+      videoInteractions[videoId] = { viewed: true, liked: false };
+      
+      // Save to storage
+      await AsyncStorage.setItem(VIDEO_INTERACTIONS_KEY, JSON.stringify(videoInteractions));
+      
+      console.log(`Recorded view for video ${videoId}`);
+    }
+    // If already exists, no need to update since we don't want to overwrite like status
+  } catch (error) {
+    console.error('Failed to record view:', error);
+  }
+}
+
+/**
  * Get like status for a specific video
  */
 export async function getVideoLikeStatus(videoId: string): Promise<boolean> {
@@ -83,7 +106,7 @@ export async function getVideoLikeStatus(videoId: string): Promise<boolean> {
     await initializeML();
   }
 
-  return videoLikes[videoId] || false;
+  return videoInteractions[videoId]?.liked || false;
 }
 
 /**
@@ -94,50 +117,100 @@ export async function getLikedVideos(): Promise<string[]> {
     await initializeML();
   }
 
-  return Object.keys(videoLikes).filter(videoId => videoLikes[videoId]);
+  return Object.keys(videoInteractions).filter(videoId => videoInteractions[videoId].liked);
+}
+
+/**
+ * Get all viewed video IDs
+ */
+export async function getViewedVideos(): Promise<string[]> {
+  if (!isInitialized) {
+    await initializeML();
+  }
+
+  return Object.keys(videoInteractions).filter(videoId => videoInteractions[videoId].viewed);
+}
+
+/**
+ * Get all video interactions data for ML training
+ */
+export async function getAllInteractionsData(): Promise<VideoInteractions> {
+  if (!isInitialized) {
+    await initializeML();
+  }
+
+  return { ...videoInteractions };
 }
 
 /**
  * Get all video likes data for ML training
  */
-export async function getAllLikesData(): Promise<VideoLikes> {
+export async function getAllLikesData(): Promise<{[videoId: string]: boolean}> {
   if (!isInitialized) {
     await initializeML();
   }
 
-  return { ...videoLikes };
+  const likesData: {[videoId: string]: boolean} = {};
+  for (const [videoId, interaction] of Object.entries(videoInteractions)) {
+    likesData[videoId] = interaction.liked;
+  }
+  
+  return likesData;
 }
 
 /**
- * Get like statistics
+ * Get interaction statistics
  */
-export async function getLikeStats(): Promise<{ totalVideos: number; likedVideos: number; likeRate: number }> {
+export async function getInteractionStats(): Promise<{ 
+  totalVideos: number; 
+  viewedVideos: number; 
+  likedVideos: number; 
+  viewRate: number;
+  likeRate: number; 
+}> {
   if (!isInitialized) {
     await initializeML();
   }
 
-  const totalVideos = Object.keys(videoLikes).length;
-  const likedVideos = Object.values(videoLikes).filter(liked => liked).length;
+  const totalVideos = Object.keys(videoInteractions).length;
+  const viewedVideos = Object.values(videoInteractions).filter(interaction => interaction.viewed).length;
+  const likedVideos = Object.values(videoInteractions).filter(interaction => interaction.liked).length;
+  const viewRate = totalVideos > 0 ? viewedVideos / totalVideos : 0;
   const likeRate = totalVideos > 0 ? likedVideos / totalVideos : 0;
 
   return {
     totalVideos,
+    viewedVideos,
     likedVideos,
+    viewRate,
     likeRate
   };
 }
 
 /**
- * Reset all like data (for testing/debugging)
+ * Get like statistics 
+ */
+export async function getLikeStats(): Promise<{ totalVideos: number; likedVideos: number; likeRate: number }> {
+  const stats = await getInteractionStats();
+  
+  return {
+    totalVideos: stats.totalVideos,
+    likedVideos: stats.likedVideos,
+    likeRate: stats.likeRate
+  };
+}
+
+/**
+ * Reset all interaction data (for testing/debugging)
  */
 export async function resetMLData(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(VIDEO_LIKES_KEY);
-    videoLikes = {};
+    await AsyncStorage.removeItem(VIDEO_INTERACTIONS_KEY);
+    videoInteractions = {};
     isInitialized = false;
-    console.log('Like data reset successfully');
+    console.log('Video interaction data reset successfully');
   } catch (error) {
-    console.error('Failed to reset like data:', error);
+    console.error('Failed to reset interaction data:', error);
   }
 }
 

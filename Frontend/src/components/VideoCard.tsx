@@ -14,7 +14,7 @@ import * as Haptics from "expo-haptics";
 import { useFeed } from "../state";
 import { Video } from "../types";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { recordLike } from "../lib/ml";
+import { recordLike, recordViewed } from "../lib/ml";
 
 interface VideoCardProps {
   video: Video;
@@ -50,10 +50,12 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
   useEffect(() => {
     if (isActive && !isPaused) {
       player.play();
+      // Record that this video was viewed when it becomes active
+      recordViewed(video.id);
     } else {
       player.pause();
     }
-  }, [isActive, isPaused, player]);
+  }, [isActive, isPaused, player, video.id]);
   
   // Reset pause state when video becomes inactive
   useEffect(() => {

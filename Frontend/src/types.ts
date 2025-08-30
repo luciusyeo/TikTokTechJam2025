@@ -14,9 +14,13 @@ export type Comment = {
   ts: number; // epoch ms
 };
 
-// Simplified type for like interactions only
-export interface VideoLike {
-  videoId: string;
-  isLiked: boolean;
-  timestamp: number;
+// Video interaction tracking for local storage
+export interface VideoInteraction {
+  viewed: boolean;
+  liked: boolean;
+}
+
+// Collection of all video interactions
+export interface VideoInteractions {
+  [videoId: string]: VideoInteraction;
 }
