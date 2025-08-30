@@ -13,7 +13,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.felixlmao.Frontend"
+      "bundleIdentifier": "com.luciusyeol.Frontend"
     },
     "android": {
       "adaptiveIcon": {

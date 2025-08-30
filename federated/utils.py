@@ -1,102 +1,107 @@
-
+import keras
+import torch
+from torchvision.io import read_video
+from torchvision.transforms import Compose, Resize, ToTensor, Normalize
 import numpy as np
 import random
-import cv2
-import os
-from imutils import paths
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelBinarizer
-from sklearn.model_selection import train_test_split
-from sklearn.utils import shuffle
+import tensorflow as tf
 from sklearn.metrics import accuracy_score
 
-import tensorflow as tf
-import keras
-from keras.models import Sequential
-from keras.layers import Dense, Activation, Input
-from keras.optimizers import SGD
-from keras import backend as K
+def reshape_embeddings(X, flatten=True):
+    """
+    Reshape video or other embeddings to (num_samples, embedding_size).
+    """
+    if flatten:
+        reshaped_X = X.reshape(X.shape[0], -1)
+    else:
+        reshaped_X = X
+    return reshaped_X
 
 
-
-def load(paths, verbose=-1):
-    '''expects images for each class in seperate dir, 
-    e.g all digits in 0 class in the directory named 0 '''
-    data = list()
-    labels = list()
-    # loop over the input images
-    for (i, imgpath) in enumerate(paths):
-        # load the image and extract the class labels
-        im_gray = cv2.imread(imgpath, cv2.IMREAD_GRAYSCALE)
-        image = np.array(im_gray).flatten()
-        label = imgpath.split(os.path.sep)[-2]
-        # scale the image to [0, 1] and add to list
-        data.append(image/255)
-        labels.append(label)
-        # show an update every `verbose` images
-        if verbose > 0 and i > 0 and (i + 1) % verbose == 0:
-            print("[INFO] processed {}/{}".format(i + 1, len(paths)))
-    # return a tuple of the data and labels
-    return data, labels
-
-
-def create_clients(image_list, label_list, num_clients=10, initial='clients'):
-    ''' return: a dictionary with keys clients' names and value as 
-                data shards - tuple of images and label lists.
-        args: 
-            image_list: a list of numpy arrays of training images
-            label_list:a list of binarized labels for each image
-            num_client: number of fedrated members (clients)
-            initials: the clients'name prefix, e.g, clients_1 
-            
-    '''
-
-    #create a list of client names
-    client_names = ['{}_{}'.format(initial, i+1) for i in range(num_clients)]
-
-    #randomize the data
-    data = list(zip(image_list, label_list))
+def create_clients(video_embeddings, labels, num_clients=3, user_dim=64, initial='client'):
+    """Splits dataset into clients and attaches random user embeddings."""
+    client_names = [f"{initial}_{i+1}" for i in range(num_clients)]
+    
+    # Shuffle data
+    data = list(zip(video_embeddings, labels))
     random.shuffle(data)
-
-    #shard data and place at each client
-    size = len(data)//num_clients
-    shards = [data[i:i + size] for i in range(0, size*num_clients, size)]
-
-    #number of clients must equal number of shards
-    assert(len(shards) == len(client_names))
-
-    return {client_names[i] : shards[i] for i in range(len(client_names))}
-
+    
+    # Shard data
+    size = len(data) // num_clients
+    shards = [data[i:i+size] for i in range(0, size*num_clients, size)]
+    
+    clients = {}
+    for i, shard in enumerate(shards):
+        videos, y = zip(*shard)
+        videos = np.array(videos)
+        y = np.array(y)
+        
+        # Create random user embedding for this client
+        user_embedding = np.random.rand(1, user_dim).astype(np.float32)
+        user_embedding_tile = np.tile(user_embedding, (videos.shape[0], 1))
+        
+        # Concatenate user embedding to video embeddings
+        X_concat = np.concatenate([videos, user_embedding_tile], axis=1)
+        
+        clients[client_names[i]] = list(zip(X_concat, y))
+        
+    return clients
 
 
 def batch_data(data_shard, bs=32):
-    '''Takes in a clients data shard and create a tfds object off it
-    args:
-        shard: a data, label constituting a client's data shard
-        bs:batch size
-    return:
-        tfds object'''
-    #seperate shard into data and labels lists
-    data, label = zip(*data_shard)
-    dataset = tf.data.Dataset.from_tensor_slices((list(data), list(label)))
-    return dataset.shuffle(len(label)).batch(bs)
+    """
+    Takes in a client's data shard and creates a tf.data.Dataset object.
 
+    Args:
+        data_shard: list of tuples (X_concat, y) for one client
+        bs: batch size
 
-class SimpleMLP:
-    @staticmethod
-    def build(shape, classes):
-        model = Sequential()
-        model.add(Input(shape=(shape,)))  # <-- replace input_shape in Dense
-        model.add(Dense(200))
-        model.add(Activation("relu"))
-        model.add(Dense(200))
-        model.add(Activation("relu"))
-        model.add(Dense(classes))
-        model.add(Activation("softmax"))
-        return model
+    Returns:
+        tf.data.Dataset object
+    """
+    # Separate shard into data and labels
+    data, labels = zip(*data_shard)
     
+    # Convert to arrays if needed
+    data = np.array(data, dtype=np.float32)
+    labels = np.array(labels, dtype=np.float32)
 
-def weight_scalling_factor(clients_trn_data, client_name):
+    dataset = tf.data.Dataset.from_tensor_slices((data, labels))
+    return dataset.shuffle(len(labels)).batch(bs)
+
+
+def preprocess_video(video_path, num_frames=16):
+    video, _, _ = read_video(video_path, pts_unit='sec')
+    video = video.permute(0, 3, 1, 2)  # T, C, H, W
+    indices = torch.linspace(0, video.shape[0]-1, num_frames).long()
+    video = video[indices]
+    transform = Compose([
+        Resize((224, 224)),
+        ToTensor(),
+        Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    video = torch.stack([transform(frame) for frame in video])
+    video = video.unsqueeze(0)  # B=1
+    return video
+
+
+def test_model(X_test, Y_test, model, comm_round):
+    # Predict probabilities
+    logits = model.predict(X_test)
+
+    # Convert to 0/1 predictions using 0.5 threshold
+    preds = (logits > 0.5).astype(np.float32).flatten()
+
+    # Ensure Y_test is a 1D numpy array
+    y_true = np.array(Y_test).flatten()
+
+    acc = accuracy_score(y_true, preds)
+    loss = model.evaluate(X_test, Y_test, verbose=0)[0]
+
+    print(f"Round {comm_round}: Test Accuracy: {acc:.4f}, Loss: {loss:.4f}")
+    return acc, loss
+
+def weight_scaling_factor(clients_trn_data, client_name):
     '''
     This computes a scaling factor for the client’s model based on how much data it has relative to all clients.
 
@@ -127,9 +132,6 @@ def scale_model_weights(weight, scalar):
         weight_final.append(scalar * weight[i])
     return weight_final
 
-
-# equivalent to federated averaging
-
 def sum_scaled_weights(scaled_weight_list):
     '''Return the sum of the listed scaled weights. The is equivalent to scaled avg of the weights'''
     avg_grad = list()
@@ -139,13 +141,3 @@ def sum_scaled_weights(scaled_weight_list):
         avg_grad.append(layer_mean)
         
     return avg_grad
-
-
-def test_model(X_test, Y_test,  model, comm_round):
-    cce = keras.losses.CategoricalCrossentropy(from_logits=True)
-    #logits = model.predict(X_test, batch_size=100)
-    logits = model.predict(X_test)
-    loss = cce(Y_test, logits)
-    acc = accuracy_score(tf.argmax(logits, axis=1), tf.argmax(Y_test, axis=1))
-    print('comm_round: {} | global_acc: {:.3%} | global_loss: {}'.format(comm_round, acc, loss))
-    return acc, loss
