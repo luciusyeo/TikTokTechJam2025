@@ -1,58 +1,79 @@
 import { Video, Comment } from "../types";
+import { supabase } from "./supabase";
 
 // Mock delay to simulate network latency
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export async function fetchFeed(page = 0): Promise<Video[]> {
+// Cache for video file list to avoid repeated bucket calls
+let videoFilesCache: any[] | null = null;
+let totalVideoCount = 0;
+
+export async function fetchFeed(startIndex = 0, count = 2): Promise<Video[]> {
   await delay(120); // Simulate network delay
   
-  // Mock video data - will use placeholder until we add real video files
-  const mockVideos: Video[] = [
-    {
-      id: "v1",
-      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      caption: "Beautiful city walk at sunset 🌅",
-      author: { id: "u1", name: "marcus", avatar: undefined },
-      stats: { likes: 120, comments: 18 },
-      meLiked: false
-    },
-    {
-      id: "v2", 
-      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-      caption: "Amazing street art discovery! 🎨",
-      author: { id: "u2", name: "sarah", avatar: undefined },
-      stats: { likes: 85, comments: 12 },
-      meLiked: true
-    },
-    {
-      id: "v3",
-      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4", 
-      caption: "Coffee shop vibes ☕️",
-      author: { id: "u3", name: "alex", avatar: undefined },
-      stats: { likes: 203, comments: 45 },
-      meLiked: false
-    },
-    {
-      id: "v4",
-      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-      caption: "Dance practice session 💃",
-      author: { id: "u4", name: "jessica", avatar: undefined },
-      stats: { likes: 156, comments: 29 },
-      meLiked: false
-    },
-    {
-      id: "v5",
-      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-      caption: "Cooking experiment gone right! 👨‍🍳",
-      author: { id: "u5", name: "mike", avatar: undefined },
-      stats: { likes: 92, comments: 8 },
-      meLiked: true
+  // Fetch video files from Supabase Storage (only once, then use cache)
+  if (!videoFilesCache) {
+    const { data: files, error } = await supabase.storage.from('videos').list();
+    
+    if (error) {
+      console.error('Error fetching videos:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      return [];
     }
-  ];
 
-  // Return slice based on page (5 videos per page)
-  const startIndex = page * 5;
-  return mockVideos.slice(startIndex, startIndex + 5);
+    console.log('Raw files from bucket:', files);
+    console.log('Number of files found:', files?.length || 0);
+
+    // Filter out non-video files and empty folder placeholders
+    videoFilesCache = files?.filter(file => 
+      file.name.match(/\.(mp4|mov|avi|mkv|webm|m4v)$/i) && 
+      file.name !== '.emptyFolderPlaceholder'
+    ) || [];
+
+    totalVideoCount = videoFilesCache.length;
+    console.log('Filtered video files:', videoFilesCache);
+    console.log('Total video count:', totalVideoCount);
+  }
+
+  if (videoFilesCache.length === 0) {
+    console.log('No videos found in bucket');
+    return [];
+  }
+
+  // Return requested slice of videos
+  const endIndex = Math.min(startIndex + count, videoFilesCache.length);
+  const requestedFiles = videoFilesCache.slice(startIndex, endIndex);
+
+  console.log(`Loading videos ${startIndex} to ${endIndex - 1} (${requestedFiles.length} videos)`);
+
+  // Generate video objects with URLs and mock metadata
+  const videosWithUrls: Video[] = requestedFiles.map((file, index) => {
+    const { data } = supabase.storage.from('videos').getPublicUrl(file.name);
+    const actualIndex = startIndex + index;
+    
+    return {
+      id: `v_${actualIndex + 1}`,
+      src: data.publicUrl,
+      caption: `Video ${actualIndex + 1} - ${file.name}`,
+      author: { 
+        id: `u_${actualIndex + 1}`, 
+        name: `user${actualIndex + 1}`, 
+        avatar: undefined 
+      },
+      stats: { 
+        likes: Math.floor(Math.random() * 200) + 50, 
+        comments: Math.floor(Math.random() * 30) + 5 
+      },
+      meLiked: Math.random() > 0.7
+    };
+  });
+
+  return videosWithUrls;
+}
+
+// Helper function to get total video count without loading videos
+export function getTotalVideoCount(): number {
+  return totalVideoCount;
 }
 
 export async function fetchComments(videoId: string): Promise<Comment[]> {

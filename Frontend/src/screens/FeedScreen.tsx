@@ -1,7 +1,7 @@
 import React, { useEffect, useCallback, useRef, useState } from "react";
 import { View, StyleSheet, FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, Text } from "react-native";
 import { useFeed } from "../state";
-import { fetchFeed } from "../lib/feed";
+import { fetchFeed, getTotalVideoCount } from "../lib/feed";
 import { Video } from "../types";
 import VideoCard from "../components/VideoCard";
 import CommentsSheet from "../components/CommentsSheet";
@@ -13,25 +13,57 @@ export default function FeedScreen() {
   const { videos, index, setVideos, setIndex } = useFeed();
   const flatListRef = useRef<FlatList<Video>>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasMoreVideos, setHasMoreVideos] = useState(true);
 
+  // Initial load - load first 2 videos
   useEffect(() => {
-    const loadFeed = async () => {
+    const loadInitialFeed = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const feedData = await fetchFeed(0);
-        setVideos(feedData);
+        const initialVideos = await fetchFeed(0, 2);
+        setVideos(initialVideos);
+        
+        // Check if there are more videos to load
+        const totalCount = getTotalVideoCount();
+        setHasMoreVideos(initialVideos.length < totalCount);
       } catch (error) {
-        console.error("Failed to load feed:", error);
+        console.error("Failed to load initial feed:", error);
         setError('Failed to load videos. Please try again.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadFeed();
+    loadInitialFeed();
   }, [setVideos]);
+
+  // Progressive loading function
+  const loadMoreVideos = useCallback(async () => {
+    if (isLoadingMore || !hasMoreVideos) return;
+
+    try {
+      setIsLoadingMore(true);
+      const startIndex = videos.length;
+      const moreVideos = await fetchFeed(startIndex, 1); // Load 1 video at a time
+      
+      if (moreVideos.length > 0) {
+        setVideos([...videos, ...moreVideos]);
+        
+        // Check if there are still more videos
+        const totalCount = getTotalVideoCount();
+        setHasMoreVideos(videos.length + moreVideos.length < totalCount);
+      } else {
+        setHasMoreVideos(false);
+      }
+    } catch (error) {
+      console.error("Failed to load more videos:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [videos, isLoadingMore, hasMoreVideos, setVideos]);
 
   const onMomentumScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset } = event.nativeEvent;
@@ -45,9 +77,16 @@ export default function FeedScreen() {
       const activeIndex = viewableItems[0].index;
       if (activeIndex !== null && activeIndex !== index) {
         setIndex(activeIndex);
+        
+        // Trigger progressive loading when user is near the end
+        // Load more when user reaches the second-to-last video
+        if (activeIndex >= videos.length - 2 && hasMoreVideos && !isLoadingMore) {
+          console.log(`Preloading: User at video ${activeIndex}, total loaded: ${videos.length}`);
+          loadMoreVideos();
+        }
       }
     }
-  }, [index, setIndex]);
+  }, [index, setIndex, videos.length, hasMoreVideos, isLoadingMore, loadMoreVideos]);
 
   const viewabilityConfig = {
     itemVisiblePercentThreshold: 95,

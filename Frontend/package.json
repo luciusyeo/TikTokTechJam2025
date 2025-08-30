@@ -16,6 +16,8 @@
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
+    "@supabase/supabase-js": "^2.56.1",
+    "@tensorflow/tfjs-react-native": "^1.0.0",
     "expo": "~53.0.22",
     "expo-av": "~15.1.7",
     "expo-blur": "~14.1.5",
@@ -29,6 +31,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.5",
     "expo-system-ui": "~5.0.11",
+    "expo-video": "~2.2.2",
     "expo-web-browser": "~14.2.0",
     "nativewind": "^4.1.23",
     "prettier-plugin-tailwindcss": "^0.5.14",
@@ -41,8 +44,7 @@
     "react-native-screens": "~4.11.1",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
-    "zustand": "^5.0.8",
-    "expo-video": "~2.2.2"
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
