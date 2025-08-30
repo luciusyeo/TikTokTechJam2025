@@ -2,21 +2,12 @@ import { loadInteractions } from "../storage/interactions";
 import { loadUserVector } from "../storage/userVector";
 import { fetchVideoVectors } from "../api/backend";
 import { sendTrainingBatch } from "./localModel"
+import { Interaction } from "@/src/types";
 
 const TRAIN_BATCH_SIZE = 3;
 
-// Define the shape of an interaction
-interface Interaction {
-  videoId: string;
-  liked: boolean;
-}
+type LocalModelUpdate = any;
 
-// Define type for local model update
-type LocalModelUpdate = any; // adjust if you have a specific shape
-
-/**
- * Train local model on latest 3 interactions
- */
 export async function maybeTrainLocalModel(): Promise<void> {
   const interactions: Interaction[] = await loadInteractions();
   if (interactions.length < TRAIN_BATCH_SIZE) return;

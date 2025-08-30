@@ -1,4 +1,4 @@
-import { supabase } from "../src/lib/supabase"; // your Supabase client
+import { supabase } from "../src/lib/supabase";
 
 interface VideoRow {
   id: number;
@@ -44,25 +44,5 @@ export async function fetchVideoVectors(
   } catch (err) {
     console.error("Failed to fetch video vectors:", err);
     return [];
-  }
-}
-
-import axios from "axios";
-
-const BACKEND_URL = "https://your-backend.com"; // replace with your backend URL
-
-/**
- * Send the local model update to the backend
- * @param {Object} localUpdate - e.g., model weights or gradients
- */
-export async function sendModelUpdate(localUpdate: any) {
-  try {
-    const response = await axios.post(
-      `${BACKEND_URL}/model-update`,
-      localUpdate
-    );
-    console.log("Model update sent successfully:", response.data);
-  } catch (err) {
-    console.error("Failed to send model update:", err);
   }
 }

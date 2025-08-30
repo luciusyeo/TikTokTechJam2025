@@ -1,10 +1,5 @@
 import { getAllInteractionsData } from "../src/lib/ml";
-
-// Define the interaction shape
-export interface Interaction {
-  videoId: string;
-  liked: boolean;
-}
+import { Interaction } from "@/src/types";
 
 export async function loadInteractions(): Promise<Interaction[]> {
   const data = await getAllInteractionsData();

@@ -24,3 +24,9 @@ export interface VideoInteraction {
 export interface VideoInteractions {
   [videoId: string]: VideoInteraction;
 }
+
+// Define the shape of an interaction
+export interface Interaction {
+  videoId: string;
+  liked: boolean;
+}

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BACKEND_URL = "http://localhost:8000"; // replace with your backend URL
+const BACKEND_URL = "http://localhost:8000";
 
 /**
  * Send training batch to backend /local/train endpoint

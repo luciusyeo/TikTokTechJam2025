@@ -15,15 +15,15 @@ import json
 
 import config
 
-# --- Initialize Supabase ---
+# Initialize Supabase
 supabase = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
 bucket_name = "videos"
 
-# --- Initialize CLIP ---
+# Initialize CLIP 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
 
-# --- Video processing functions ---
+# Video processing functions
 def compress_video(input_path, output_path, target_width=1080, duration=5):
     """
     Compress and trim a video to a lower resolution and duration.
@@ -94,7 +94,7 @@ def upload_to_supabase(file_path, bucket="videos"):
     url = supabase.storage.from_(bucket).get_public_url(file_name)
     return url
 
-# --- Prepare folders for compressed videos and embeddings ---
+# Prepare folders for compressed videos and embeddings
 compressed_folder = "compressed"
 os.makedirs(compressed_folder, exist_ok=True)
 
@@ -107,7 +107,7 @@ category_embeddings = {
     "nature": []
 }
 
-# --- Main pipeline ---
+# Main pipeline
 data_folder = "data"
 video_files = []
 for root, dirs, files in os.walk(data_folder):
@@ -155,7 +155,7 @@ for vf, category in tqdm(video_files, desc="Processing videos"):
     
     print(f"Inserted video: {url} | is_animal={is_animal}")
 
-# --- Save all embeddings to category JSON files ---
+# Save all embeddings to category JSON files
 for category, vectors in category_embeddings.items():
     out_path = os.path.join(embeddings_folder, f"{category}.json")
     with open(out_path, "w") as f:

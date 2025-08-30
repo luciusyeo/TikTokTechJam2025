@@ -9,23 +9,18 @@ from local_api import router as local_router
 from typing import Dict, List
 import random
 
-# -----------------------------
 # Supabase client
-# -----------------------------
 supabase_client: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
 
-# -----------------------------
+
 # Global model in memory
-# -----------------------------
-global_model = BinaryMLP(input_dim=32, hidden_dim= 128)  # TODO: adjust input_dim for user+video concatenation
+global_model = BinaryMLP(input_dim=32, hidden_dim= 128)
 global_model_state = None  # list of numpy arrays
 expected_clients = 1   # how many devices you expect in this round
 client_updates: Dict[str, List[np.ndarray]] = {}  # store weights per client
 client_vectors: Dict[str, np.ndarray] = {}
 
-# -----------------------------
 # Pydantic schemas
-# -----------------------------
 class ModelUpdate(BaseModel):
     client_id: str
     weights: list  # list of lists (numpy arrays) 
@@ -34,9 +29,7 @@ class RecommendRequest(BaseModel):
     user_vector: list
     top_k: int = 10
 
-# -----------------------------
 # Helper functions
-# -----------------------------
 def save_global_model(weights):
     supabase_client.table("global_models").insert({
         "weights": [w.tolist() for w in weights]  # store as JSON-friendly lists
@@ -52,9 +45,7 @@ def load_latest_global_model():
         return [np.array(w) for w in res.data[0]["weights"]]
     return None
 
-# -----------------------------
 # FastAPI App
-# -----------------------------
 app = FastAPI()
 app.include_router(local_router)
 
