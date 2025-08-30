@@ -2,12 +2,7 @@ import { loadInteractions } from "../storage/interactions";
 import { saveUserVector } from "../storage/userVector";
 import * as math from "mathjs";
 import { fetchVideoVectors } from "../api/backend";
-
-// Define the shape of an interaction
-interface Interaction {
-  videoId: string;
-  liked: boolean;
-}
+import { Interaction } from "@/src/types";
 
 /**
  * Build and store the user vector based on liked interactions
