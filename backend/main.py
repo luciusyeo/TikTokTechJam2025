@@ -16,7 +16,7 @@ supabase_client: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY
 
 # Global model init
 global_model = BinaryMLP(input_dim=32, hidden_dim= 128)
-expected_clients = 1   # how many devices you expect in this round
+expected_clients = 2   # how many devices you expect in this round
 trust_graph = create_trust_graph(expected_clients)
 noisy_id = "noisy"
 trust_graph.add_node(noisy_id, trust=0.2)
@@ -104,13 +104,17 @@ def update_model(update: ModelUpdate):
     client_updates[update.client_id].append(np.array(client_weights, dtype=object))
 
     # --- Simulate noisy node contributes once per round ---
+    decay_factor = 0.9
     if noisy_id not in client_updates:
         client_updates[noisy_id] = []
         # Generate noisy update (randomized)
         noisy_weights = [w + np.random.normal(0, 0.5, w.shape) for w in client_weights]
         client_updates[noisy_id].append(np.array(noisy_weights, dtype=object))
         # Trust remains low
-        update_trust(trust_graph, noisy_id, 0.2)
+        current_trust = trust_graph.nodes[noisy_id].get("trust", 0.2)
+        new_trust = max(0.0, current_trust * decay_factor)  # avoid going below 0
+        update_trust(trust_graph, noisy_id, new_trust)
+
 
     # --- Federated averaging with trust weighting ---
     if len(client_updates) >= expected_clients:
