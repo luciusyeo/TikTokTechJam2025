@@ -1,6 +1,9 @@
 {
   "expo": {
     "name": "Frontend",
+    "web": {
+      "bundler": "metro"
+    },
     "slug": "Frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,11 +20,6 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
