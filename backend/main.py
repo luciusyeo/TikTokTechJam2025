@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import tensorflow as tf
+from trust_graph_utils import create_trust_graph, trust_graph_to_json, update_trust, add_device_to_trust_graph
 from model import BinaryMLP
 from supabase import create_client, Client
 import config
@@ -15,11 +16,18 @@ import random
 supabase_client: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
 
 # -----------------------------
-# Global model in memory
+# Global model init
 # -----------------------------
 global_model = BinaryMLP(input_dim=32, hidden_dim= 128)  # TODO: adjust input_dim for user+video concatenation
-global_model_state = None  # list of numpy arrays
 expected_clients = 1   # how many devices you expect in this round
+trust_graph = create_trust_graph(expected_clients)
+noisy_id = "noisy"
+trust_graph.add_node(noisy_id, trust=0.2)
+
+# -----------------------------
+# Global model in memory
+# -----------------------------
+global_model_state = None  # list of numpy arrays
 client_updates: Dict[str, List[np.ndarray]] = {}  # store weights per client
 client_vectors: Dict[str, np.ndarray] = {}
 
@@ -81,7 +89,7 @@ def get_global_model():
 
 @app.post("/update_model")
 def update_model(update: ModelUpdate):
-    global client_updates, global_model_state, client_vectors
+    global client_updates, global_model_state, client_vectors, trust_graph, noisy_id
 
     client_weights = [np.array(w) for w in update.weights]
 
@@ -90,35 +98,58 @@ def update_model(update: ModelUpdate):
     client_vectors[update.client_id] = user_vector
     print("client", update.client_id, ": ", user_vector)
 
-    # Initialize list for this client if not present
+    # Simulate a local validation accuracy for demo
+    val_acc = random.uniform(0.7, 0.95) if "noisy" not in update.client_id else 0.2
+
+    # --- Add or update client node dynamically ---
     if update.client_id not in client_updates:
         client_updates[update.client_id] = []
+        add_device_to_trust_graph(trust_graph, update.client_id, initial_trust=val_acc)
+
+    # Update trust for this client
+    update_trust(trust_graph, update.client_id, val_acc)
+
+    # Append weights for this client
     client_updates[update.client_id].append(np.array(client_weights, dtype=object))
 
-    # Federated averaging
-    if len(client_updates) == expected_clients:
+    # --- Simulate noisy node contributes once per round ---
+    if noisy_id not in client_updates:
+        client_updates[noisy_id] = []
+        # Generate noisy update (randomized)
+        noisy_weights = [w + np.random.normal(0, 0.5, w.shape) for w in client_weights]
+        client_updates[noisy_id].append(np.array(noisy_weights, dtype=object))
+        # Trust remains low
+        update_trust(trust_graph, noisy_id, 0.2)
+
+    # --- Federated averaging with trust weighting ---
+    if len(client_updates) >= expected_clients:
         all_client_weights = []
 
-        # Flatten updates per client (average multiple submissions from same client)
+        # Average multiple submissions per client
         for updates_per_client in client_updates.values():
-            # Average multiple submissions per client
             client_avg = []
             for layer_weights in zip(*updates_per_client):
                 client_avg.append(np.mean(layer_weights, axis=0))
             all_client_weights.append(client_avg)
 
-        # Federated averaging across all clients
+        # Weighted aggregation using trust scores
         new_weights = []
-        for layer_weights in zip(*all_client_weights):
-            new_weights.append(np.mean(layer_weights, axis=0))
+        for layer_idx in range(len(all_client_weights[0])):
+            weighted_sum = sum(
+                trust_graph.nodes[c]['trust'] * all_client_weights[i][layer_idx]
+                for i, c in enumerate(client_updates.keys())
+            )
+            total_trust = sum(trust_graph.nodes[c]['trust'] for c in client_updates.keys())
+            new_weights.append(weighted_sum / total_trust)
 
+        # Set new global model
         global_model.set_weights(new_weights)
         global_model_state = new_weights
 
-        client_updates = {}  # reset for next round
-
+        # Reset for next round
+        client_updates = {}
+        
         return {"status": "Aggregated", "new_global_model": "ready"}
-
     else:
         return {"status": f"Waiting for {expected_clients - len(client_updates)} more clients"}
 
@@ -164,3 +195,7 @@ def get_user_vectors():
     all_vectors = {user_id: vec.tolist() for user_id, vec in client_vectors.items()}
     
     return {"client_vectors": all_vectors}
+
+@app.get("/trust_graph")
+def get_trust_graph():
+    return trust_graph_to_json(trust_graph)
