@@ -1,13 +1,9 @@
 import { supabase } from "../src/lib/supabase"; // your Supabase client
 
-/**
- * Fetch video vectors directly from Supabase
- * @param {Array<string>} videoIds
- * @returns {Promise<Object>} - { videoId: [vector array], ... }
- */
+// Updated interface to reflect the gen_vector column
 interface VideoRow {
   id: string;
-  vector: number[];
+  gen_vector: number[];
 }
 
 export async function fetchVideoVectors(videoIds: string[]): Promise<number[][]> {
@@ -15,8 +11,8 @@ export async function fetchVideoVectors(videoIds: string[]): Promise<number[][]>
 
   try {
     const { data, error } = await supabase
-      .from("videos")               
-      .select("id, vector")
+      .from("videos")
+      .select("id, gen_vector") // <-- changed field
       .in("id", videoIds);
 
     if (error) {
@@ -29,7 +25,7 @@ export async function fetchVideoVectors(videoIds: string[]): Promise<number[][]>
     // Map to array of vectors in same order as videoIds
     const vectors: number[][] = videoIds.map(id => {
       const video = typedData.find(v => v.id === id);
-      return video?.vector ?? [];
+      return video?.gen_vector ?? []; // <-- use gen_vector
     });
 
     return vectors;
@@ -38,7 +34,6 @@ export async function fetchVideoVectors(videoIds: string[]): Promise<number[][]>
     return [];
   }
 }
-
 
 
 import axios from "axios";
