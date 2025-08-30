@@ -5,12 +5,6 @@ import { supabase } from "../src/lib/supabase"; // your Supabase client
  * @param {Array<string>} videoIds
  * @returns {Promise<Object>} - { videoId: [vector array], ... }
  */
-
-interface VideoRow {
-  id: string;
-  vector: number[];
-}
-
 interface VideoRow {
   id: string;
   vector: number[];
@@ -21,7 +15,7 @@ export async function fetchVideoVectors(videoIds: string[]): Promise<number[][]>
 
   try {
     const { data, error } = await supabase
-      .from<VideoRow>("videos")
+      .from("videos")               
       .select("id, vector")
       .in("id", videoIds);
 
@@ -30,9 +24,11 @@ export async function fetchVideoVectors(videoIds: string[]): Promise<number[][]>
       return [];
     }
 
+    const typedData = (data ?? []) as VideoRow[];
+
     // Map to array of vectors in same order as videoIds
     const vectors: number[][] = videoIds.map(id => {
-      const video = data?.find((v: VideoRow) => v.id === id); // explicit type here
+      const video = typedData.find(v => v.id === id);
       return video?.vector ?? [];
     });
 
