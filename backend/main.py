@@ -130,6 +130,7 @@ def recommend(req: RecommendRequest):
     if np.all(user_vec == 0):
         videos = supabase_client.table("videos").select("id, url").execute().data
         random.shuffle(videos)  # Shuffle in place
+        print("User vector is all zeros, returning random videos")
         top_videos = [{"id": v["id"], "url": v["url"]} for v in videos[:req.top_k]]
         return {"recommendations": top_videos}
     
