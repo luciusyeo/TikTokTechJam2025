@@ -4,12 +4,12 @@ import keras
 import tensorflow as tf
 
 class BinaryMLP:
-    def __init__(self, input_dim: int, hidden_dim: int = 64):
+    def __init__(self, input_dim: int, hidden_dim):
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.model = Sequential([
             Input(shape=(input_dim,)),
-            Dense(hidden_dim, activation='relu'),
+            Dense(hidden_dim, activation='relu'), #each dense layer is arr of [weights], arr of bias
             Dense(hidden_dim, activation='relu'),
             Dense(1, activation='sigmoid')
         ])
