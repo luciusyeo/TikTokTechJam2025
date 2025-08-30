@@ -6,13 +6,15 @@ interface VideoRow {
   gen_vector: number[];
 }
 
-export async function fetchVideoVectors(videoIds: string[]): Promise<number[][]> {
+export async function fetchVideoVectors(
+  videoIds: string[]
+): Promise<number[][]> {
   if (!videoIds || videoIds.length === 0) return [];
 
   try {
     const { data, error } = await supabase
       .from("videos")
-      .select("id, gen_vector") // <-- changed field
+      .select("id, gen_vector")
       .in("id", videoIds);
 
     if (error) {
@@ -23,8 +25,8 @@ export async function fetchVideoVectors(videoIds: string[]): Promise<number[][]>
     const typedData = (data ?? []) as VideoRow[];
 
     // Map to array of vectors in same order as videoIds
-    const vectors: number[][] = videoIds.map(id => {
-      const video = typedData.find(v => v.id === id);
+    const vectors: number[][] = videoIds.map((id) => {
+      const video = typedData.find((v) => v.id === id);
       return video?.gen_vector ?? []; // <-- use gen_vector
     });
 
@@ -34,7 +36,6 @@ export async function fetchVideoVectors(videoIds: string[]): Promise<number[][]>
     return [];
   }
 }
-
 
 import axios from "axios";
 
@@ -46,7 +47,10 @@ const BACKEND_URL = "https://your-backend.com"; // replace with your backend URL
  */
 export async function sendModelUpdate(localUpdate: any) {
   try {
-    const response = await axios.post(`${BACKEND_URL}/model-update`, localUpdate);
+    const response = await axios.post(
+      `${BACKEND_URL}/model-update`,
+      localUpdate
+    );
     console.log("Model update sent successfully:", response.data);
   } catch (err) {
     console.error("Failed to send model update:", err);
