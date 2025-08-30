@@ -16,20 +16,28 @@ class ModelData(BaseModel):
 
 router = APIRouter(prefix="/local")
 
-AGGREGATOR_URL = "http://localhost:8000/update_model"  # central server endpoint
+GLOBAL_MODEL_URL = "http://localhost:8000/update_model"  # central server endpoint
 
 @router.post("/train")
 def train_local(data: ModelData):
-    model = BinaryMLP(input_dim=len(data.X[0]), hidden_dim=128)
+    input_dim = len(data.X[0])
+    model = BinaryMLP(input_dim=input_dim, hidden_dim=128)
 
-    # Convert incoming training data to numpy
+    try:
+        resp = requests.get(GLOBAL_MODEL_URL)
+        global_weights = resp.json().get("weights", [])
+        if global_weights:
+            model.model.set_weights([np.array(w) for w in global_weights])
+    except Exception as e:
+        print(f"⚠️ Could not fetch global model: {e}")
+
     X = np.array(data.X, dtype=np.float32)
     y = np.array(data.y, dtype=np.int32)
 
-    # 3. Train locally
+    # Train locally
     model.model.fit(X, y, epochs=3, batch_size=16, verbose=0)
 
-    # 4. Get updated weights
+    # Get updated weights
     weights = [w.tolist() for w in model.model.get_weights()]
 
     payload = {
@@ -37,7 +45,7 @@ def train_local(data: ModelData):
         "weights": weights
     }
     try:
-        resp = requests.post(AGGREGATOR_URL, json=payload)
+        resp = requests.post(GLOBAL_MODEL_URL, json=payload)
         agg_response = resp.json()
     except Exception as e:
         agg_response = {"error": str(e)}
