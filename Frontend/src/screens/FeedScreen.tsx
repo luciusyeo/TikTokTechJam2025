@@ -42,9 +42,12 @@ export default function FeedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hasMoreVideos, setHasMoreVideos] = useState(true);
 
-  // Initial load - initialize ML system, build user vector, then load recommendations
+  const feedLoadedRef = useRef(false);
+
   useEffect(() => {
     const loadInitialFeed = async () => {
+      if (feedLoadedRef.current) return;
+
       try {
         setIsLoading(true);
         setError(null);
@@ -59,19 +62,12 @@ export default function FeedScreen() {
             "ML system initialization failed, continuing without stored interactions:",
             mlError
           );
-          // Don't fail the entire app if ML system fails - just log and continue
         }
 
-        // Build user vector and get recommendations
         let initialVideos: Video[] = [];
         try {
           console.log("Building user vector...");
           const userVector = await buildUserVector();
-          console.log(
-            "User vector built, storing in state and fetching recommendations..."
-          );
-
-          // Store user vector in state for later use
           setCurrentUserVector(userVector);
 
           const recommendations = await fetchRecommendations(userVector, 5);
@@ -94,21 +90,19 @@ export default function FeedScreen() {
           );
         }
 
-        // Fallback to default feed if recommendations failed or empty
         if (initialVideos.length === 0) {
-          console.log("Using fallback feed loading...");
-          initialVideos = await fetchFeed(0, 2);
+          initialVideos = await fetchFeed(0, 10);
         }
 
         setVideos(initialVideos);
 
-        // For recommended videos, we don't know total count, so assume more available
-        // For fallback, check total count
         const totalCount = getTotalVideoCount();
         setHasMoreVideos(
           initialVideos.length > 0 &&
             (initialVideos.length < totalCount || initialVideos.length === 5)
         );
+
+        feedLoadedRef.current = true;
       } catch (error) {
         console.error("Failed to load initial feed:", error);
         setError("Failed to load videos. Please try again.");
@@ -120,42 +114,48 @@ export default function FeedScreen() {
     loadInitialFeed();
   }, [setVideos]);
 
-  // Progressive loading function - use recommendation API with current user vector
   const loadMoreVideos = useCallback(async () => {
-    if (isLoadingMore || !hasMoreVideos) return;
+    if (isLoadingMore) return;
 
     try {
       setIsLoadingMore(true);
 
       let moreVideos: Video[] = [];
 
-      // Try to get more recommendations with current user vector
       if (currentUserVector && currentUserVector.length > 0) {
         try {
           console.log("Loading more videos with updated user vector...");
           const recommendations = await fetchRecommendations(
             currentUserVector,
-            5
+            10
+          );
+
+          console.log(
+            "Recommendations from API for more videos:",
+            recommendations.recommendations
           );
 
           if (recommendations.recommendations.length > 0) {
             const videoIds = recommendations.recommendations.map(
               (rec) => rec.id
             );
-            // Filter out videos we already have
+            console.log("[feed] Video IDs:", videoIds);
+
             const newVideoIds = videoIds.filter(
-              (id) => !videos.find((v) => v.id === id)
+              (id) => !videos.find((v) => v.id === String(id))
             );
+            console.log("[feed] New video IDs after filtering:", newVideoIds);
 
             if (newVideoIds.length > 0) {
               moreVideos = await fetchRecommendedFeed(newVideoIds);
               console.log(`Loaded ${moreVideos.length} new recommended videos`);
             } else {
               console.log(
-                "All recommended videos already loaded, trying more..."
+                "All recommended videos already loaded, no new videos."
               );
-              // If we got recommendations but they're all duplicates, consider fetching more
             }
+          } else {
+            console.log("No recommendations found.");
           }
         } catch (recommendationError) {
           console.warn(
@@ -167,22 +167,26 @@ export default function FeedScreen() {
         console.log("No user vector available, using fallback feed loading...");
       }
 
-      // Fallback to storage-based loading if recommendations failed or no user vector
       if (moreVideos.length === 0) {
         console.log("Using fallback feed loading for more videos...");
         const startIndex = videos.length;
-        moreVideos = await fetchFeed(startIndex, 1); // Load 1 video at a time
-
-        // Check if there are still more videos in storage
-        const totalCount = getTotalVideoCount();
-        if (videos.length + moreVideos.length >= totalCount) {
-          setHasMoreVideos(false);
-        }
+        moreVideos = await fetchFeed(startIndex, 10); // Fetch 10 videos from the default feed
       }
 
-      if (moreVideos.length > 0) {
-        setVideos([...videos, ...moreVideos]);
+      const uniqueVideos = moreVideos.filter(
+        (newVideo) =>
+          !videos.some((existingVideo) => existingVideo.id === newVideo.id)
+      );
+
+      console.log(
+        "Total videos after adding new ones:",
+        [...videos, ...uniqueVideos].length
+      );
+
+      if (uniqueVideos.length > 0) {
+        setVideos([...videos, ...uniqueVideos]);
       } else {
+        console.log("No unique videos to add, stopping further fetch.");
         setHasMoreVideos(false);
       }
     } catch (error) {
@@ -206,26 +210,21 @@ export default function FeedScreen() {
     ({ viewableItems }: any) => {
       if (viewableItems.length > 0) {
         const activeIndex = viewableItems[0].index;
-        if (activeIndex !== null && activeIndex !== index) {
-          // Set new index
-          setIndex(activeIndex);
+        // console.log(`Active video index: ${activeIndex}, Total videos loaded: ${videos.length}`);
 
-          // Trigger progressive loading when user is near the end
-          // Load more when user reaches the second-to-last video
-          if (
-            activeIndex >= videos.length - 2 &&
-            hasMoreVideos &&
-            !isLoadingMore
-          ) {
-            console.log(
-              `Preloading: User at video ${activeIndex}, total loaded: ${videos.length}`
-            );
-            loadMoreVideos();
-          }
+        // Load more videos only when the last item is viewed
+        // Ensure we're not in the process of loading more videos
+        if (activeIndex === videos.length - 1 && !isLoadingMore) {
+          console.log(
+            `User reached the last video: ${activeIndex}, loading more...`
+          );
+          loadMoreVideos();
+        } else {
+          // console.log("Not at the last video or still loading, skipping fetch");
         }
       }
     },
-    [index, setIndex, videos, hasMoreVideos, isLoadingMore, loadMoreVideos]
+    [videos, hasMoreVideos, isLoadingMore, loadMoreVideos]
   );
 
   const viewabilityConfig = {
@@ -250,7 +249,6 @@ export default function FeedScreen() {
     [screenHeight]
   );
 
-  // Error state component
   const renderErrorState = () => (
     <View
       style={[
@@ -272,7 +270,6 @@ export default function FeedScreen() {
     </View>
   );
 
-  // Loading state component
   const renderLoadingState = () => (
     <View
       style={[
@@ -299,7 +296,7 @@ export default function FeedScreen() {
         ref={flatListRef}
         data={videos}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         pagingEnabled
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
@@ -315,7 +312,6 @@ export default function FeedScreen() {
         initialNumToRender={1}
         updateCellsBatchingPeriod={50}
         style={styles.flatList}
-        // Performance optimizations
         disableIntervalMomentum={true}
         scrollEventThrottle={16}
         keyboardDismissMode="on-drag"

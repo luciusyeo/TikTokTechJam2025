@@ -9,7 +9,7 @@ export interface RecommendationRequest {
 
 export interface RecommendationResponse {
   recommendations: Array<{
-    id: string;
+    id: number;
     url: string;
   }>;
 }
@@ -19,7 +19,7 @@ export interface RecommendationResponse {
  */
 export async function fetchRecommendations(
   userVector: number[], 
-  topK: number = 5
+  topK: number = 10
 ): Promise<RecommendationResponse> {
   const requestBody = {
     user_vector: userVector,

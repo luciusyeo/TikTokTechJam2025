@@ -2,19 +2,19 @@ import { supabase } from "../src/lib/supabase"; // your Supabase client
 
 // Updated interface to reflect the gen_vector column
 interface VideoRow {
-  id: string;
+  id: number;
   gen_vector: number[];
 }
 
 export async function fetchVideoVectors(
-  videoIds: string[]
+  videoIds: number[]
 ): Promise<number[][]> {
   if (!videoIds || videoIds.length === 0) return [];
 
   try {
     const { data, error } = await supabase
       .from("videos")
-      .select("id, gen_vector")
+      .select("id, gen_vector") // Ensure gen_vector is included
       .in("id", videoIds);
 
     if (error) {
@@ -24,10 +24,21 @@ export async function fetchVideoVectors(
 
     const typedData = (data ?? []) as VideoRow[];
 
-    // Map to array of vectors in same order as videoIds
+    // Map to array of vectors in the same order as videoIds
     const vectors: number[][] = videoIds.map((id) => {
-      const video = typedData.find((v) => v.id === id);
-      return video?.gen_vector ?? []; // <-- use gen_vector
+      const video = typedData.find((v) => Number(v.id) === Number(id)); // Ensuring that both are treated as numbers
+
+      if (!video) {
+        console.warn(`Video ID ${id} not found in fetched data.`);
+        return [];
+      }
+
+      if (!video.gen_vector || video.gen_vector.length === 0) {
+        console.warn(`No valid vector found for video ID: ${id}`);
+        return [];
+      }
+
+      return video.gen_vector;
     });
 
     return vectors;

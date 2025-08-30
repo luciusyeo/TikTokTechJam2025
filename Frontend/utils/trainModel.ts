@@ -32,6 +32,9 @@ export async function maybeTrainLocalModel(): Promise<void> {
   const videoIds: string[] = newBatch.map(inter => inter.videoId);
   const videoVectors: number[][] = await fetchVideoVectors(videoIds);
 
+  console.log(userVector.length);  // Should print 16
+  console.log(videoVectors[0].length);  // Should print 16
+
   // Construct input X and labels y
   const X: number[][] = newBatch.map((inter, idx) => [
     ...userVector,
