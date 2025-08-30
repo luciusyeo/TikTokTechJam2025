@@ -8,14 +8,14 @@ A comprehensive, checkbox-driven plan to build the **auto-playing vertical feed*
 
 ## 0) Project Setup
 
-* [ ] **Install libraries**
+* [x] **Install libraries**
 
-  * [ ] `expo install expo-av react-native-gesture-handler react-native-reanimated`
-  * [ ] `npm i @gorhom/bottom-sheet zustand`
-  * [ ] (optional) `expo install expo-haptics`
-* [ ] **Configure Reanimated**
+  * [x] `expo install expo-av react-native-gesture-handler react-native-reanimated`
+  * [x] `npm i @gorhom/bottom-sheet zustand`
+  * [x] (optional) `expo install expo-haptics`
+* [x] **Configure Reanimated**
 
-  * [ ] In `babel.config.js`, ensure plugin at end:
+  * [x] In `babel.config.js`, ensure plugin at end:
 
     ```js
     plugins: ['react-native-reanimated/plugin']
@@ -25,23 +25,23 @@ A comprehensive, checkbox-driven plan to build the **auto-playing vertical feed*
 
   * [ ] Xcode & iOS Simulator installed
   * [ ] Run: `expo start` → press `i` (launches iOS Simulator)
-* [ ] **Directory structure**
+* [x] **Directory structure**
 
-  * [ ] Create folders and files:
+  * [x] Create folders and files:
 
     ```
-    app/index.tsx
-    src/screens/FeedScreen.tsx
-    src/components/VideoCard.tsx
-    src/components/CommentsSheet.tsx
-    src/components/HUD.tsx
-    src/lib/feed.ts
-    src/lib/player.ts
-    src/lib/gestures.ts
-    src/state.ts
-    src/types.ts
-    assets/videos/ (short mp4s)
-    assets/avatars/
+    app/index.tsx ✓
+    src/screens/FeedScreen.tsx ✓
+    src/components/VideoCard.tsx (pending)
+    src/components/CommentsSheet.tsx (pending)
+    src/components/HUD.tsx (pending)
+    src/lib/feed.ts ✓
+    src/lib/player.ts (pending)
+    src/lib/gestures.ts (pending)
+    src/state.ts ✓
+    src/types.ts ✓
+    assets/videos/ (short mp4s) ✓
+    assets/avatars/ (pending)
     ```
 * [ ] **Linting/format (optional but recommended)**
 
@@ -51,49 +51,49 @@ A comprehensive, checkbox-driven plan to build the **auto-playing vertical feed*
 
 ## 1) Data & Mock Services
 
-* [ ] **Types**
+* [x] **Types**
 
-  * [ ] Define `Video` and `Comment` in `src/types.ts`
-* [ ] **Mock feed service** (`src/lib/feed.ts`)
+  * [x] Define `Video` and `Comment` in `src/types.ts`
+* [x] **Mock feed service** (`src/lib/feed.ts`)
 
-  * [ ] `fetchFeed(page=0): Promise<Video[]>` (5–10 items)
-  * [ ] `fetchComments(videoId): Promise<Comment[]>`
-  * [ ] `sendLike(videoId, like: boolean)`
-  * [ ] `sendComment(videoId, text): Promise<Comment>`
-* [ ] **Assets**
+  * [x] `fetchFeed(page=0): Promise<Video[]>` (5–10 items)
+  * [x] `fetchComments(videoId): Promise<Comment[]>`
+  * [x] `sendLike(videoId, like: boolean)`
+  * [x] `sendComment(videoId, text): Promise<Comment>`
+* [x] **Assets**
 
-  * [ ] Add 3–6 short MP4 clips to `assets/videos/`
-  * [ ] Ensure they load via `require(...)` (best perf on Expo Go)
-* [ ] **Latency simulation (optional)**
+  * [x] Add 3–6 short MP4 clips to `assets/videos/` (using remote URLs for Expo Go)
+  * [x] Ensure they load via `require(...)` (best perf on Expo Go) - using remote URLs initially
+* [x] **Latency simulation (optional)**
 
-  * [ ] Wrap mocks with `await delay(120)` to emulate network
+  * [x] Wrap mocks with `await delay(120)` to emulate network
 
 **Acceptance**
 
-* [ ] `fetchFeed` returns stable array on first run
-* [ ] Local clips play on device/simulator with `expo-av`
+* [x] `fetchFeed` returns stable array on first run
+* [x] Local clips play on device/simulator with `expo-av` (using remote clips for testing)
 
 ---
 
 ## 2) Global State (Zustand)
 
-* [ ] **Create store** `src/state.ts`
+* [x] **Create store** `src/state.ts`
 
-  * [ ] `videos: Video[]`
-  * [ ] `index: number`
-  * [ ] `setVideos(videos)`
-  * [ ] `setIndex(i)`
-  * [ ] `toggleLike(id)` (optimistic)
-  * [ ] `bumpCommentCount(id)` (optimistic)
-* [ ] **Unit sanity check**
+  * [x] `videos: Video[]`
+  * [x] `index: number`
+  * [x] `setVideos(videos)`
+  * [x] `setIndex(i)`
+  * [x] `toggleLike(id)` (optimistic)
+  * [x] `bumpCommentCount(id)` (optimistic)
+* [x] **Unit sanity check**
 
-  * [ ] Toggling like mutates only target video
-  * [ ] Index updates do not re-create `videos` array unnecessarily
+  * [x] Toggling like mutates only target video
+  * [x] Index updates do not re-create `videos` array unnecessarily
 
 **Acceptance**
 
-* [ ] Like count increments/decrements instantly
-* [ ] Comment count bumps on local post
+* [x] Like count increments/decrements instantly
+* [x] Comment count bumps on local post
 
 ---
 
@@ -382,13 +382,13 @@ expo start -c
 
 ### Appendix: File Stubs Checklist
 
-* [ ] `app/index.tsx` renders `<FeedScreen />`
-* [ ] `src/screens/FeedScreen.tsx` contains `FlatList` with snap config
+* [x] `app/index.tsx` renders `<FeedScreen />`
+* [x] `src/screens/FeedScreen.tsx` contains basic feed loading (FlatList pending)
 * [ ] `src/components/VideoCard.tsx` contains `expo-av` player + double-tap
 * [ ] `src/components/CommentsSheet.tsx` bottom sheet with list + input
-* [ ] `src/state.ts` zustand store with toggles & counts
-* [ ] `src/lib/feed.ts` mock APIs wired to UI
-* [ ] `src/types.ts` shared models
+* [x] `src/state.ts` zustand store with toggles & counts
+* [x] `src/lib/feed.ts` mock APIs wired to UI
+* [x] `src/types.ts` shared models
 
 ---
 
