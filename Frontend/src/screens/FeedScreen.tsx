@@ -4,6 +4,7 @@ import { useFeed } from "../state";
 import { fetchFeed } from "../lib/feed";
 import { Video } from "../types";
 import VideoCard from "../components/VideoCard";
+import CommentsSheet from "../components/CommentsSheet";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -86,6 +87,7 @@ export default function FeedScreen() {
         initialNumToRender={2}
         style={styles.flatList}
       />
+      <CommentsSheet />
     </View>
   );
 }
