@@ -233,31 +233,31 @@ export async function recordInteraction(interaction: { videoId: string; action: 
 /**
  * Store a vector array with a given key
  */
-export async function storeVectorArray(key: string, vectorArray: number[]): Promise<void> {
+export async function storeVectorArray(vectorArray: number[]): Promise<void> {
   try {
-    const storageKey = `${VECTOR_ARRAYS_KEY}_${key}`;
+    const storageKey = `${VECTOR_ARRAYS_KEY}`;
     await AsyncStorage.setItem(storageKey, JSON.stringify(vectorArray));
-    console.log(`Vector array stored with key: ${key}`);
+    console.log(`Vector array stored with key: ${storageKey}`);
   } catch (error) {
-    console.error(`Failed to store vector array with key ${key}:`, error);
+    console.error(`Failed to store vector array with key ${VECTOR_ARRAYS_KEY}:`, error);
   }
 }
 
 /**
  * Get a stored vector array by key
  */
-export async function getVectorArray(key: string): Promise<number[] | null> {
+export async function getVectorArray(): Promise<number[] | null> {
   try {
-    const storageKey = `${VECTOR_ARRAYS_KEY}_${key}`;
+    const storageKey = `${VECTOR_ARRAYS_KEY}`;
     const saved = await AsyncStorage.getItem(storageKey);
     if (saved) {
       const vectorArray = JSON.parse(saved);
-      console.log(`Vector array retrieved with key: ${key}`);
+      console.log(`Vector array retrieved with key: ${storageKey}`);
       return vectorArray;
     }
     return null;
   } catch (error) {
-    console.error(`Failed to get vector array with key ${key}:`, error);
+    console.error(`Failed to get vector array with key ${VECTOR_ARRAYS_KEY}:`, error);
     return null;
   }
 }
@@ -265,13 +265,13 @@ export async function getVectorArray(key: string): Promise<number[] | null> {
 /**
  * Clear a stored vector array by key
  */
-export async function clearVectorArray(key: string): Promise<void> {
+export async function clearVectorArray(): Promise<void> {
   try {
-    const storageKey = `${VECTOR_ARRAYS_KEY}_${key}`;
+    const storageKey = `${VECTOR_ARRAYS_KEY}`;
     await AsyncStorage.removeItem(storageKey);
-    console.log(`Vector array cleared with key: ${key}`);
+    console.log(`Vector array cleared with key: ${storageKey}`);
   } catch (error) {
-    console.error(`Failed to clear vector array with key ${key}:`, error);
+    console.error(`Failed to clear vector array with key ${VECTOR_ARRAYS_KEY}:`, error);
   }
 }
 
