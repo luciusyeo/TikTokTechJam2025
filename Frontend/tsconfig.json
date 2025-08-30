@@ -6,7 +6,13 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "target": "ES2017",           // or "ES2015"
+    "lib": ["ES2017", "DOM"],     // include ES2017 so Promise is recognized
+    "module": "ESNext",
+    "esModuleInterop": true,
+    "allowJs": true,
+    "skipLibCheck": true
   },
   "include": [
     "**/*.ts",
@@ -14,5 +20,5 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
-  ]
+  ],
 }

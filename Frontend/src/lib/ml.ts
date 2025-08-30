@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { VideoInteractions } from '../types';
+import { maybeTrainLocalModel } from "../../utils/trainModel"
+import { buildUserVector } from "../../utils/vectorUtils"
 
 // Storage keys
 const VIDEO_INTERACTIONS_KEY = 'video_interactions';
@@ -59,9 +61,10 @@ export async function recordLike(videoId: string, isLiked: boolean): Promise<voi
     
     // Call functions based on like/dislike action
     if (isLiked) {
-      // User liked the video: call 2 functions
+      await maybeTrainLocalModel();
+      await buildUserVector();
     } else {
-      // User disliked the video: call 1 function
+      await maybeTrainLocalModel();
     }
     
   } catch (error) {
@@ -126,15 +129,30 @@ export async function getViewedVideos(): Promise<string[]> {
   return Object.keys(videoInteractions).filter(videoId => videoInteractions[videoId].viewed);
 }
 
+export interface Interaction {
+  videoId: string;
+  liked: boolean;
+}
+
 /**
  * Get all video interactions data for ML training
  */
-export async function getAllInteractionsData(): Promise<VideoInteractions> {
+export async function getAllInteractionsData(): Promise<Interaction[]> {
   if (!isInitialized) {
     await initializeML();
   }
 
-  return { ...videoInteractions };
+  // Convert your object to an array
+  // If videoInteractions is like { videoId1: { liked: true }, videoId2: { liked: false } }
+  // we need to transform it into an array
+  const interactions: Interaction[] = Object.entries(videoInteractions).map(
+    ([videoId, data]) => ({
+      videoId,
+      liked: data.liked,
+    })
+  );
+
+  return interactions;
 }
 
 /**
