@@ -99,31 +99,31 @@ A comprehensive, checkbox-driven plan to build the **auto-playing vertical feed*
 
 ## 3) Feed Screen (Snap Paging + Viewability)
 
-* [ ] **Render skeleton (`FeedScreen.tsx`)**
+* [x] **Render skeleton (`FeedScreen.tsx`)**
 
-  * [ ] `FlatList` vertical, full height items
-  * [ ] `pagingEnabled`, `decelerationRate="fast"`
-  * [ ] `showsVerticalScrollIndicator={false}`
-* [ ] **Index calculation**
+  * [x] `FlatList` vertical, full height items
+  * [x] `pagingEnabled`, `decelerationRate="fast"`
+  * [x] `showsVerticalScrollIndicator={false}`
+* [x] **Index calculation**
 
-  * [ ] `onMomentumScrollEnd` → `index = round(offsetY / screenH)`
-  * [ ] Clamp to `[0, videos.length - 1]`
-* [ ] **Viewability config**
+  * [x] `onMomentumScrollEnd` → `index = round(offsetY / screenH)`
+  * [x] Clamp to `[0, videos.length - 1]`
+* [x] **Viewability config**
 
-  * [ ] `viewabilityConfig={{ itemVisiblePercentThreshold: 95 }}`
-  * [ ] `onViewableItemsChanged` → set active index
-* [ ] **Feed load**
+  * [x] `viewabilityConfig={{ itemVisiblePercentThreshold: 95 }}`
+  * [x] `onViewableItemsChanged` → set active index
+* [x] **Feed load**
 
-  * [ ] On mount, `fetchFeed(0)` → `setVideos`
+  * [x] On mount, `fetchFeed(0)` → `setVideos`
 * [ ] **Pagination (optional MVP)**
 
   * [ ] When index ≥ `len-2`, prefetch next page (append)
 
 **Acceptance**
 
-* [ ] **Snap to page:** release finger → list snaps to exactly one item
-* [ ] Scroll up/down 10+ times with no jitter
-* [ ] No partial-page resting states
+* [x] **Snap to page:** release finger → list snaps to exactly one item
+* [x] Scroll up/down 10+ times with no jitter
+* [x] No partial-page resting states
 
 ---
 
@@ -383,8 +383,8 @@ expo start -c
 ### Appendix: File Stubs Checklist
 
 * [x] `app/index.tsx` renders `<FeedScreen />`
-* [x] `src/screens/FeedScreen.tsx` contains basic feed loading (FlatList pending)
-* [ ] `src/components/VideoCard.tsx` contains `expo-av` player + double-tap
+* [x] `src/screens/FeedScreen.tsx` contains FlatList with snap paging ✓
+* [x] `src/components/VideoCard.tsx` contains placeholder (expo-av pending)
 * [ ] `src/components/CommentsSheet.tsx` bottom sheet with list + input
 * [x] `src/state.ts` zustand store with toggles & counts
 * [x] `src/lib/feed.ts` mock APIs wired to UI
