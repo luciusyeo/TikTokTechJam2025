@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { Video, Comment } from "./types";
+import { buildUserVector } from "../utils/vectorUtils";
 
 type FeedState = {
   videos: Video[];
@@ -7,6 +8,8 @@ type FeedState = {
   commentsCache: Record<string, Comment[]>;
   isCommentsOpen: boolean;
   currentVideoId: string | null;
+  currentUserVector: number[] | null;
+  isUpdatingVector: boolean;
   setVideos(videos: Video[]): void;
   setIndex(index: number): void;
   toggleLike(id: string): void;
@@ -15,6 +18,8 @@ type FeedState = {
   addComment(videoId: string, comment: Comment): void;
   openComments(videoId: string): void;
   closeComments(): void;
+  setCurrentUserVector(vector: number[]): void;
+  updateUserVectorAfterLike(): Promise<void>;
 };
 
 export const useFeed = create<FeedState>((set) => ({
@@ -23,6 +28,8 @@ export const useFeed = create<FeedState>((set) => ({
   commentsCache: {},
   isCommentsOpen: false,
   currentVideoId: null,
+  currentUserVector: null,
+  isUpdatingVector: false,
   
   setVideos: (videos) => set({ videos }),
   
@@ -80,5 +87,26 @@ export const useFeed = create<FeedState>((set) => ({
     isCommentsOpen: false,
     currentVideoId: null,
   }),
+  
+  setCurrentUserVector: (vector) => set({ currentUserVector: vector }),
+  
+  updateUserVectorAfterLike: async () => {
+    const state = useFeed.getState();
+    if (state.isUpdatingVector) {
+      console.log('User vector update already in progress, skipping...');
+      return;
+    }
+    
+    try {
+      set({ isUpdatingVector: true });
+      console.log('Rebuilding user vector after like/dislike...');
+      const newUserVector = await buildUserVector();
+      set({ currentUserVector: newUserVector, isUpdatingVector: false });
+      console.log('User vector updated in state');
+    } catch (error) {
+      console.error('Failed to update user vector after like:', error);
+      set({ isUpdatingVector: false });
+    }
+  },
 }));
 

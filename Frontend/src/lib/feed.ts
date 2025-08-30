@@ -22,8 +22,6 @@ export async function fetchFeed(startIndex = 0, count = 2): Promise<Video[]> {
       return [];
     }
 
-    console.log('Raw files from bucket:', files);
-    console.log('Number of files found:', files?.length || 0);
 
     // Filter out non-video files and empty folder placeholders
     videoFilesCache = files?.filter(file => 
@@ -32,8 +30,6 @@ export async function fetchFeed(startIndex = 0, count = 2): Promise<Video[]> {
     ) || [];
 
     totalVideoCount = videoFilesCache.length;
-    console.log('Filtered video files:', videoFilesCache);
-    console.log('Total video count:', totalVideoCount);
   }
 
   if (videoFilesCache.length === 0) {
@@ -45,7 +41,6 @@ export async function fetchFeed(startIndex = 0, count = 2): Promise<Video[]> {
   const endIndex = Math.min(startIndex + count, videoFilesCache.length);
   const requestedFiles = videoFilesCache.slice(startIndex, endIndex);
 
-  console.log(`Loading videos ${startIndex} to ${endIndex - 1} (${requestedFiles.length} videos)`);
 
   // Generate video objects with URLs and mock metadata
   const videosWithUrls: Video[] = await Promise.all(
@@ -75,8 +70,6 @@ export async function fetchFeed(startIndex = 0, count = 2): Promise<Video[]> {
     })
   );
 
-  console.log(`Generated ${videosWithUrls.length} videos with interaction data:`, 
-    videosWithUrls.map(v => `${v.id}: liked=${v.meLiked}`).join(', '));
 
   return videosWithUrls;
 }
@@ -86,7 +79,56 @@ export function getTotalVideoCount(): number {
   return totalVideoCount;
 }
 
-export async function fetchComments(videoId: string): Promise<Comment[]> {
+// Fetch specific videos by their IDs (for recommendations)
+export async function fetchRecommendedFeed(recommendedVideoIds: string[]): Promise<Video[]> {
+  await delay(120); // Simulate network delay
+  
+  // Get video data from Supabase by IDs
+  const { data: videoData, error } = await supabase
+    .from('videos')
+    .select('id, url')
+    .in('id', recommendedVideoIds);
+    
+  if (error) {
+    console.error('Error fetching recommended videos from database:', error);
+    throw new Error('Failed to fetch recommended videos');
+  }
+
+  if (!videoData || videoData.length === 0) {
+    console.log('No recommended videos found in database');
+    return [];
+  }
+
+  // Generate video objects with URLs and mock metadata
+  const videosWithUrls: Video[] = await Promise.all(
+    videoData.map(async (dbVideo) => {
+      const videoId = dbVideo.id.toString();
+      
+      // Get actual like status from stored interactions
+      const meLiked = await getVideoLikeStatus(videoId);
+      
+      return {
+        id: videoId,
+        src: dbVideo.url,
+        caption: `Recommended Video ${dbVideo.id}`,
+        author: { 
+          id: `u_${dbVideo.id}`, 
+          name: `user${dbVideo.id}`, 
+          avatar: undefined 
+        },
+        stats: { 
+          likes: Math.floor(Math.random() * 200) + 50, 
+          comments: Math.floor(Math.random() * 30) + 5 
+        },
+        meLiked
+      };
+    })
+  );
+
+  return videosWithUrls;
+}
+
+export async function fetchComments(_videoId: string): Promise<Comment[]> {
   await delay(100);
   
   // Mock comments data
@@ -124,7 +166,7 @@ export async function sendComment(videoId: string, text: string): Promise<Commen
   await delay(150);
   
   const newComment: Comment = {
-    id: `c_${Math.random().toString(36).substr(2, 9)}`,
+    id: `c_${Math.random().toString(36).substring(2, 11)}`,
     user: { id: "me", name: "You", avatar: undefined },
     text,
     ts: Date.now()

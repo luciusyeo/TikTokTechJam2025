@@ -23,7 +23,7 @@ interface VideoCardProps {
 
 export default function VideoCard({ video, isActive }: VideoCardProps) {
   const { width, height } = useWindowDimensions();
-  const { toggleLike, openComments } = useFeed();
+  const { toggleLike, openComments, updateUserVectorAfterLike } = useFeed();
   const isMountedRef = useRef(true);
   const [isPaused, setIsPaused] = useState(false);
   
@@ -119,6 +119,9 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
       recordLike(video.id, !video.meLiked);
       toggleLike(video.id);
       triggerHeartBurst();
+      
+      // Update user vector after like/dislike
+      updateUserVectorAfterLike();
     } catch (error) {
       console.warn("Error handling double tap:", error);
     }
@@ -137,6 +140,9 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
       
       recordLike(video.id, !video.meLiked);
       toggleLike(video.id);
+      
+      // Update user vector after like/dislike
+      updateUserVectorAfterLike();
     } catch (error) {
       console.warn("Error handling like tap:", error);
     }
