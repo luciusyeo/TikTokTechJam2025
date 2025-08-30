@@ -155,14 +155,17 @@ def recommend(req: RecommendRequest):
 
     videos = supabase_client.table("videos").select("id, gen_vector, url").execute().data
 
+    top_k = req.top_k
+    num_random = max(1, int(top_k * 0.2))
+
     # If user vector is zero, return fully random recommendations
     if np.all(user_vec == 0):
         random.shuffle(videos)
-        top_videos = [{"id": v["id"], "url": v["url"]} for v in videos[:req.top_k]]
+        top_videos = [{"id": v["id"], "url": v["url"]} for v in videos[:top_k]]
         return {"recommendations": top_videos}
 
     # Convert to tensor for model
-    user_vec_tf = tf.convert_to_tensor([req.user_vector], dtype=tf.float32)
+    user_vec_tf = tf.convert_to_tensor([user_vec], dtype=tf.float32)
 
     # Compute scores
     scored_videos = []
@@ -173,10 +176,8 @@ def recommend(req: RecommendRequest):
         score = global_model.forward(user_vec_tf, video_vec_tf).numpy().item()
         scored_videos.append((v["id"], score, v["url"]))
 
+    # Sort by score descending
     scored_videos.sort(key=lambda x: x[1], reverse=True)
-
-    top_k = req.top_k
-    num_random = max(1, int(top_k * 0.2))
 
     # Separate top-ranked and random candidates
     top_ranked = scored_videos[:top_k - num_random]
@@ -184,33 +185,38 @@ def recommend(req: RecommendRequest):
     remaining_videos = [v for v in videos if v["id"] not in selected_ids]
     random_videos = random.sample(remaining_videos, min(num_random, len(remaining_videos)))
     random_videos_formatted = [{"id": v["id"], "url": v["url"]} for v in random_videos]
-
     top_ranked_formatted = [{"id": vid, "url": url} for vid, _, url in top_ranked]
 
-    # Always start with first top-ranked video
+    # Interleave random videos evenly
     final_recommendations = []
+
+    # Always start with first top-ranked video
     if top_ranked_formatted:
         final_recommendations.append(top_ranked_formatted[0])
 
-    # Evenly distribute the rest
     remaining_top = top_ranked_formatted[1:]
-    total_slots = len(remaining_top) + len(random_videos_formatted)
-    insertion_indices = [
-        round((i + 1) * (total_slots + 1) / (len(random_videos_formatted) + 1)) - 1
-        for i in range(len(random_videos_formatted))
-    ]
+    num_random_actual = len(random_videos_formatted)
+    num_top_remaining = len(remaining_top)
 
-    top_idx = 0
-    random_idx = 0
-    for slot in range(total_slots):
-        if random_idx < len(insertion_indices) and slot == insertion_indices[random_idx]:
-            final_recommendations.append(random_videos_formatted[random_idx])
-            random_idx += 1
-        else:
-            if top_idx < len(remaining_top):
-                final_recommendations.append(remaining_top[top_idx])
-                top_idx += 1
+    if num_random_actual > 0:
+        interval = max(1, num_top_remaining // num_random_actual)
+        top_idx = 0
+        random_idx = 0
 
+        while top_idx < num_top_remaining or random_idx < num_random_actual:
+            # Add top videos up to interval
+            for _ in range(interval):
+                if top_idx < num_top_remaining:
+                    final_recommendations.append(remaining_top[top_idx])
+                    top_idx += 1
+            # Add a random video
+            if random_idx < num_random_actual:
+                final_recommendations.append(random_videos_formatted[random_idx])
+                random_idx += 1
+    else:
+        final_recommendations.extend(remaining_top)
+
+    # Ensure final length does not exceed top_k
     return {"recommendations": final_recommendations[:top_k]}
 
 
