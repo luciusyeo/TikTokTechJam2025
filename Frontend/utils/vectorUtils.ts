@@ -9,11 +9,6 @@ interface Interaction {
   liked: boolean;
 }
 
-// Define type for video vectors mapping
-interface VideoVectors {
-  [videoId: string]: number[];
-}
-
 /**
  * Build and store the user vector based on liked interactions
  * @returns user vector as number array
@@ -26,16 +21,8 @@ export async function buildUserVector(): Promise<number[]> {
   const likedVideos = interactions.filter(i => i.liked);
 
   if (likedVideos.length === 0) {
-    // If no liked videos, return zero vector
-    // For safety, fetch a sample video vector length
-    const sampleVideoIds = interactions.map(i => i.videoId).slice(0, 1);
-    let vectorLength = 10; // default length if no sample
-    if (sampleVideoIds.length > 0) {
-      const sampleVectors = await fetchVideoVectors(sampleVideoIds);
-      if (sampleVectors.length > 0) vectorLength = sampleVectors[0].length;
-    }
-
-    const emptyVector = Array(vectorLength).fill(0);
+    // If no liked videos, return zero vector of fixed size 16
+    const emptyVector = Array(16).fill(0);
     await saveUserVector(emptyVector);
     return emptyVector;
   }
@@ -47,8 +34,8 @@ export async function buildUserVector(): Promise<number[]> {
   const videoVectors: number[][] = await fetchVideoVectors(videoIds);
 
   // 5. Sum the vectors
-  let sumVector = Array(videoVectors[0].length).fill(0);
-  likedVideos.forEach((inter, idx) => {
+  let sumVector = Array(16).fill(0);
+  likedVideos.forEach((_, idx) => {
     const vec = videoVectors[idx];
     if (vec) {
       sumVector = math.add(sumVector, vec) as number[];
