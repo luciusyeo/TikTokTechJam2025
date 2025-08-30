@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Text, useWindowDimensions, TouchableOpacity } from "react-native";
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -33,10 +35,21 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
     player.muted = true;
   });
   
-  // Animation values for heart burst
+  // Enhanced animation values for heart burst
   const heartScale = useSharedValue(0);
   const heartOpacity = useSharedValue(0);
   const heartRotation = useSharedValue(0);
+  
+  // Multi-heart particle effects
+  const heart1Scale = useSharedValue(0);
+  const heart1Opacity = useSharedValue(0);
+  const heart1TranslateY = useSharedValue(0);
+  const heart2Scale = useSharedValue(0);
+  const heart2Opacity = useSharedValue(0);  
+  const heart2TranslateY = useSharedValue(0);
+  const heart3Scale = useSharedValue(0);
+  const heart3Opacity = useSharedValue(0);
+  const heart3TranslateY = useSharedValue(0);
   
   // Button press animations
   const likeButtonScale = useSharedValue(1);
@@ -78,25 +91,25 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
     };
   }, [heartScale, heartOpacity, pauseIconOpacity, pauseIconScale]);
 
-  // Enhanced heart burst animation with rotation
+  // Enhanced heart burst animation with multiple particles
   const triggerHeartBurst = () => {
     if (!isMountedRef.current) return;
     
-    // Reset values
+    // Main heart animation
     heartScale.value = 0;
     heartOpacity.value = 1;
     heartRotation.value = 0;
     
     // Scale animation
     heartScale.value = withSequence(
-      withSpring(1.6, { damping: 10, stiffness: 300 }),
-      withSpring(0, { damping: 8, stiffness: 200 })
+      withSpring(1.8, { damping: 8, stiffness: 400 }),
+      withSpring(0, { damping: 10, stiffness: 250 })
     );
     
-    // Opacity animation with precise 450ms timing
+    // Opacity animation
     heartOpacity.value = withSequence(
       withTiming(1, { duration: 150 }),
-      withTiming(0, { duration: 300 }, () => {
+      withTiming(0, { duration: 400 }, () => {
         if (isMountedRef.current) {
           heartScale.value = 0;
           heartOpacity.value = 0;
@@ -105,11 +118,45 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
       })
     );
     
-    // Subtle rotation for dynamic effect
+    // Enhanced rotation with bounce
     heartRotation.value = withSequence(
-      withTiming(15, { duration: 225 }),
-      withTiming(-15, { duration: 225 })
+      withTiming(20, { duration: 200 }),
+      withTiming(-10, { duration: 150 }),
+      withTiming(0, { duration: 100 })
     );
+
+    // Particle heart animations
+    const animateParticleHeart = (
+      scale: Animated.SharedValue<number>, 
+      opacity: Animated.SharedValue<number>, 
+      translateY: Animated.SharedValue<number>,
+      delay: number
+    ) => {
+      setTimeout(() => {
+        if (!isMountedRef.current) return;
+        
+        scale.value = 0;
+        opacity.value = 1;
+        translateY.value = 0;
+        
+        scale.value = withSequence(
+          withSpring(0.8, { damping: 8, stiffness: 300 }),
+          withSpring(0, { damping: 6, stiffness: 200 })
+        );
+        
+        opacity.value = withSequence(
+          withTiming(1, { duration: 100 }),
+          withTiming(0, { duration: 500 })
+        );
+        
+        translateY.value = withTiming(-80, { duration: 600 });
+      }, delay);
+    };
+
+    // Trigger particle animations with staggered timing
+    animateParticleHeart(heart1Scale, heart1Opacity, heart1TranslateY, 100);
+    animateParticleHeart(heart2Scale, heart2Opacity, heart2TranslateY, 200);
+    animateParticleHeart(heart3Scale, heart3Opacity, heart3TranslateY, 150);
   };
 
   const handleDoubleTap = async () => {
@@ -132,7 +179,7 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
       // Haptic feedback on like button tap
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       
-      // Button press animation
+      // Simple button press animation
       likeButtonScale.value = withSequence(
         withTiming(0.9, { duration: 100 }),
         withTiming(1, { duration: 100 })
@@ -153,7 +200,7 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
       // Haptic feedback on comments button tap
       await Haptics.selectionAsync();
       
-      // Button press animation
+      // Simple button press animation
       commentButtonScale.value = withSequence(
         withTiming(0.9, { duration: 100 }),
         withTiming(1, { duration: 100 })
@@ -196,6 +243,34 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
       { rotate: `${heartRotation.value}deg` }
     ],
     opacity: heartOpacity.value,
+  }));
+
+  // Particle heart styles
+  const animatedHeart1Style = useAnimatedStyle(() => ({
+    transform: [
+      { scale: heart1Scale.value },
+      { translateY: heart1TranslateY.value },
+      { translateX: -30 }
+    ],
+    opacity: heart1Opacity.value,
+  }));
+
+  const animatedHeart2Style = useAnimatedStyle(() => ({
+    transform: [
+      { scale: heart2Scale.value },
+      { translateY: heart2TranslateY.value },
+      { translateX: 30 }
+    ],
+    opacity: heart2Opacity.value,
+  }));
+
+  const animatedHeart3Style = useAnimatedStyle(() => ({
+    transform: [
+      { scale: heart3Scale.value },
+      { translateY: heart3TranslateY.value },
+      { translateX: 0 }
+    ],
+    opacity: heart3Opacity.value,
   }));
   
   const animatedLikeButtonStyle = useAnimatedStyle(() => ({
@@ -255,28 +330,62 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
           
           <GestureDetector gesture={tapGesture}>
             <View className="absolute inset-0">
-              {/* Heart burst animation overlay */}
+              {/* Enhanced Heart burst animation overlay with particles */}
               <Animated.View
                 className="absolute inset-0 items-center justify-center pointer-events-none"
                 style={animatedHeartStyle}
               >
-                <Text className="text-red-500 text-8xl">❤️</Text>
+                <Text className="text-red-500 text-8xl" style={{
+                  textShadowColor: 'rgba(255, 0, 0, 0.8)',
+                  textShadowOffset: {width: 0, height: 0},
+                  textShadowRadius: 20
+                }}>❤️</Text>
+              </Animated.View>
+
+              {/* Particle Hearts */}
+              <Animated.View
+                className="absolute inset-0 items-center justify-center pointer-events-none"
+                style={animatedHeart1Style}
+              >
+                <Text className="text-red-400 text-4xl">💖</Text>
+              </Animated.View>
+
+              <Animated.View
+                className="absolute inset-0 items-center justify-center pointer-events-none"
+                style={animatedHeart2Style}
+              >
+                <Text className="text-pink-400 text-3xl">💕</Text>
+              </Animated.View>
+
+              <Animated.View
+                className="absolute inset-0 items-center justify-center pointer-events-none"
+                style={animatedHeart3Style}
+              >
+                <Text className="text-red-300 text-5xl">💗</Text>
               </Animated.View>
               
-              {/* Pause indicator overlay */}
+              {/* Enhanced Pause indicator overlay */}
               <Animated.View
                 className="absolute inset-0 items-center justify-center pointer-events-none"
                 style={animatedPauseIconStyle}
               >
-                <View className="bg-black bg-opacity-60 rounded-full p-4">
+                <BlurView intensity={80} style={{
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  borderRadius: 50,
+                  padding: 20,
+                }}>
                   <Text className="text-white text-6xl">⏸️</Text>
-                </View>
+                </BlurView>
               </Animated.View>
             </View>
           </GestureDetector>
           
-          {/* Action Rail - Enhanced with better spacing and styling */}
-          <View className="absolute right-4 bottom-32 gap-6">
+          {/* Action Rail - Clean and minimal */}
+          <View className="absolute right-4 bottom-52 gap-6" style={{
+            borderRadius: 12,
+            padding: 8,
+            marginRight: -8
+          }}>
             <Animated.View style={animatedLikeButtonStyle}>
               <TouchableOpacity
                 onPress={handleSingleTapLike}
@@ -313,7 +422,7 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
                 <View className="items-center">
                   <Text className="text-white text-4xl"
                         style={{
-                          textShadowColor: 'rgba(0, 0, 0, 0.8)',
+                          textShadowColor: 'rgba(0, 0, 0, 0.9)',
                           textShadowOffset: {width: 0, height: 2},
                           textShadowRadius: 4
                         }}>💬</Text>
@@ -330,35 +439,59 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
             </Animated.View>
           </View>
           
-          {/* Caption and Author Info - Enhanced with gradient overlay */}
+          {/* Enhanced Caption and Author Info with sophisticated gradient overlay */}
           <View className="absolute bottom-0 left-0 right-0">
-            {/* Gradient overlay for better text readability */}
-            <View 
-              className="absolute bottom-0 left-0 right-0 h-32"
+            {/* Multi-layered gradient overlay for superior text readability */}
+            <LinearGradient
+              colors={[
+                'transparent',
+                'rgba(0,0,0,0.2)',
+                'rgba(0,0,0,0.6)',
+                'rgba(0,0,0,0.9)'
+              ]}
+              locations={[0, 0.3, 0.7, 1]}
               style={{
-                backgroundColor: 'rgba(0,0,0,0.6)',
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 180,
               }}
             />
-            <View className="px-4 pb-8 pt-16">
-              <Text className="text-white text-lg font-bold mb-2" 
-                    style={{ 
-                      textShadowColor: 'rgba(0, 0, 0, 1)', 
-                      textShadowOffset: {width: 0, height: 2}, 
-                      textShadowRadius: 4,
-                      letterSpacing: 0.5
-                    }}>
-                @{video.author.name}
-              </Text>
-              <Text className="text-white text-sm leading-6"
-                    style={{ 
-                      textShadowColor: 'rgba(0, 0, 0, 0.9)', 
-                      textShadowOffset: {width: 0, height: 1}, 
-                      textShadowRadius: 3,
-                      opacity: 0.95
-                    }}>
-                {video.caption}
-              </Text>
-            </View>
+            
+            <BlurView intensity={5} style={{
+              paddingHorizontal: 16,
+              paddingBottom: 32,
+              paddingTop: 60,
+            }}>
+              <View style={{
+                backgroundColor: 'rgba(0,0,0,0.3)',
+                borderRadius: 15,
+                padding: 16,
+                marginBottom: 8,
+              }}>
+                <Text className="text-white text-xl font-bold mb-3" 
+                      style={{ 
+                        textShadowColor: 'rgba(0, 0, 0, 1)', 
+                        textShadowOffset: {width: 0, height: 2}, 
+                        textShadowRadius: 6,
+                        letterSpacing: 0.8,
+                        lineHeight: 24
+                      }}>
+                  @{video.author.name}
+                </Text>
+                <Text className="text-white text-base leading-7"
+                      style={{ 
+                        textShadowColor: 'rgba(0, 0, 0, 1)', 
+                        textShadowOffset: {width: 0, height: 1}, 
+                        textShadowRadius: 4,
+                        opacity: 0.95,
+                        letterSpacing: 0.3
+                      }}>
+                  {video.caption}
+                </Text>
+              </View>
+            </BlurView>
           </View>
         </View>
       </View>

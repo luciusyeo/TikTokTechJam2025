@@ -10,6 +10,16 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFeed } from "../state";
 import {
@@ -45,6 +55,41 @@ export default function FeedScreen() {
   const [hasMoreVideos, setHasMoreVideos] = useState(true);
 
   const feedLoadedRef = useRef(false);
+
+  // Animation values for enhanced UI
+  const loadingShimmer = useSharedValue(0);
+  const analyticsButtonScale = useSharedValue(1);
+  const clearButtonScale = useSharedValue(1);
+  const buttonGlow = useSharedValue(0);
+
+  // Initialize animations
+  useEffect(() => {
+    // Continuous loading shimmer
+    loadingShimmer.value = withRepeat(
+      withTiming(1, { duration: 1500 }),
+      -1,
+      true
+    );
+    
+    // Subtle button glow effect
+    buttonGlow.value = withRepeat(
+      withSequence(
+        withTiming(0.7, { duration: 2000 }),
+        withTiming(1, { duration: 2000 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  // Enhanced button handlers with animations
+  const handleAnalyticsPress = useCallback(() => {
+    analyticsButtonScale.value = withSequence(
+      withTiming(0.95, { duration: 100 }),
+      withTiming(1, { duration: 100 })
+    );
+    setTimeout(() => router.push("./analytics"), 50);
+  }, [router, analyticsButtonScale]);
 
   const clearAllStorage = useCallback(async () => {
     Alert.alert(
@@ -83,6 +128,14 @@ export default function FeedScreen() {
       ]
     );
   }, [setCurrentUserVector]);
+
+  const handleClearStoragePress = useCallback(() => {
+    clearButtonScale.value = withSequence(
+      withTiming(0.95, { duration: 100 }),
+      withTiming(1, { duration: 100 })
+    );
+    setTimeout(clearAllStorage, 50);
+  }, [clearButtonScale, clearAllStorage]);
 
   useEffect(() => {
     const loadInitialFeed = async () => {
@@ -242,6 +295,29 @@ export default function FeedScreen() {
     }
   }, [videos, isLoadingMore, hasMoreVideos, currentUserVector, setVideos]);
 
+  // Animated styles for enhanced UI
+  const shimmerAnimatedStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      loadingShimmer.value,
+      [0, 1],
+      [-100, 100],
+      Extrapolation.CLAMP
+    );
+    return {
+      transform: [{ translateX }],
+    };
+  });
+
+  const analyticsButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: analyticsButtonScale.value }],
+    shadowOpacity: buttonGlow.value * 0.3,
+  }));
+
+  const clearButtonAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: clearButtonScale.value }],
+    shadowOpacity: buttonGlow.value * 0.3,
+  }));
+
   const onMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { contentOffset } = event.nativeEvent;
@@ -301,17 +377,30 @@ export default function FeedScreen() {
         { justifyContent: "center", alignItems: "center" },
       ]}
     >
-      <Text
+      <LinearGradient
+        colors={['#FF3B30', '#FF6B6B', '#FF3B30']}
         style={{
-          color: "white",
-          fontSize: 18,
-          textAlign: "center",
-          marginBottom: 20,
+          padding: 20,
+          borderRadius: 20,
+          marginBottom: 30,
+          shadowColor: '#FF3B30',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.3,
+          shadowRadius: 20,
         }}
       >
-        {error}
-      </Text>
-      <LoadingSpinner size="large" color="white" />
+        <Text
+          style={{
+            color: "white",
+            fontSize: 18,
+            textAlign: "center",
+            fontWeight: "600",
+          }}
+        >
+          {error}
+        </Text>
+      </LinearGradient>
+      <LoadingSpinner size="large" color="#FF3B30" />
     </View>
   );
 
@@ -322,8 +411,21 @@ export default function FeedScreen() {
         { justifyContent: "center", alignItems: "center" },
       ]}
     >
-      <LoadingSpinner size="large" color="white" style={{ marginBottom: 20 }} />
-      <Text style={{ color: "white", fontSize: 16 }}>Loading videos...</Text>
+      <Animated.View style={[styles.loadingContainer, shimmerAnimatedStyle]}>
+        <LinearGradient
+          colors={['transparent', 'rgba(255,255,255,0.1)', 'transparent']}
+          start={{x: 0, y: 0}}
+          end={{x: 1, y: 0}}
+          style={styles.shimmerGradient}
+        />
+      </Animated.View>
+      <LoadingSpinner size="large" color="#007AFF" style={{ marginBottom: 20 }} />
+      <Text style={{ color: "white", fontSize: 16, fontWeight: "500" }}>
+        Loading your feed...
+      </Text>
+      <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 14, marginTop: 8 }}>
+        Personalizing content for you ✨
+      </Text>
     </View>
   );
 
@@ -362,18 +464,42 @@ export default function FeedScreen() {
         keyboardDismissMode="on-drag"
       />
       <CommentsSheet />
-      <TouchableOpacity
-        style={styles.analyticsButton}
-        onPress={() => router.push("./analytics")}
-      >
-        <Text style={{ color: "#fff", fontWeight: "bold" }}>Analytics</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.clearStorageButton}
-        onPress={clearAllStorage}
-      >
-        <Text style={{ color: "#fff", fontWeight: "bold" }}>Clear Data</Text>
-      </TouchableOpacity>
+      
+      {/* Enhanced Analytics Button - Top Left */}
+      <Animated.View style={[styles.analyticsButtonContainer, analyticsButtonAnimatedStyle]}>
+        <TouchableOpacity
+          style={styles.analyticsButton}
+          onPress={handleAnalyticsPress}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#007AFF', '#0056CC', '#003D99']}
+            style={styles.buttonGradient}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+          >
+            <Text style={styles.buttonText}>📊 Analytics</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Enhanced Clear Data Button - Top Right */}
+      <Animated.View style={[styles.clearStorageButtonContainer, clearButtonAnimatedStyle]}>
+        <TouchableOpacity
+          style={styles.clearStorageButton}
+          onPress={handleClearStoragePress}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#FF3B30', '#CC2E24', '#992218']}
+            style={styles.buttonGradient}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+          >
+            <Text style={styles.buttonText}>🗑️ Clear Data</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
@@ -386,24 +512,63 @@ const styles = StyleSheet.create({
   flatList: {
     flex: 1,
   },
-  analyticsButton: {
+  // Loading shimmer container
+  loadingContainer: {
+    width: 200,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 30,
+  },
+  shimmerGradient: {
+    flex: 1,
+    width: 100,
+  },
+  // Enhanced button containers with positioning
+  analyticsButtonContainer: {
     position: "absolute",
-    top: 50,
-    right: 30,
-    backgroundColor: "#007AFF",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    top: 60,
+    left: 20,
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  clearStorageButtonContainer: {
+    position: "absolute",
+    top: 60,
+    right: 20,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  // Enhanced button styles
+  analyticsButton: {
     borderRadius: 25,
-    elevation: 5,
+    overflow: 'hidden',
   },
   clearStorageButton: {
-    position: "absolute",
-    top: 110,
-    right: 30,
-    backgroundColor: "#FF3B30",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
     borderRadius: 25,
-    elevation: 5,
+    overflow: 'hidden',
+  },
+  buttonGradient: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });
