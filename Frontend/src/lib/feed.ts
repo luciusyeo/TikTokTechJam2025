@@ -6,70 +6,56 @@ import { getVideoLikeStatus } from "./ml";
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Cache for video file list to avoid repeated bucket calls
-let videoFilesCache: any[] | null = null;
 let totalVideoCount = 0;
 
 export async function fetchFeed(startIndex = 0, count = 2): Promise<Video[]> {
   await delay(120); // Simulate network delay
   
-  // Fetch video files from Supabase Storage (only once, then use cache)
-  if (!videoFilesCache) {
-    const { data: files, error } = await supabase.storage.from('videos').list();
-    
-    if (error) {
-      console.error('Error fetching videos:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      return [];
+  // Get total count from DB
+  try {
+    const { count: countData, error: countError } = await supabase
+      .from('videos')
+      .select('id', { count: 'exact', head: true });
+    if (!countError && typeof countData === 'number') {
+      totalVideoCount = countData;
     }
-
-
-    // Filter out non-video files and empty folder placeholders
-    videoFilesCache = files?.filter(file => 
-      file.name.match(/\.(mp4|mov|avi|mkv|webm|m4v)$/i) && 
-      file.name !== '.emptyFolderPlaceholder'
-    ) || [];
-
-    totalVideoCount = videoFilesCache.length;
+  } catch {
+    // ignore count errors
   }
 
-  if (videoFilesCache.length === 0) {
-    console.log('No videos found in bucket');
+  // Fetch a page of videos from DB
+  const { data: rows, error } = await supabase
+    .from('videos')
+    .select('id, url')
+    .order('id', { ascending: true })
+    .range(startIndex, startIndex + count - 1);
+
+  if (error) {
+    console.error('Error fetching videos from database:', error);
     return [];
   }
 
-  // Return requested slice of videos
-  const endIndex = Math.min(startIndex + count, videoFilesCache.length);
-  const requestedFiles = videoFilesCache.slice(startIndex, endIndex);
-
-
-  // Generate video objects with URLs and mock metadata
   const videosWithUrls: Video[] = await Promise.all(
-    requestedFiles.map(async (file, index) => {
-      const { data } = supabase.storage.from('videos').getPublicUrl(file.name);
-      const actualIndex = startIndex + index;
-      const videoId = `v_${actualIndex + 1}`;
-      
-      // Get actual like status from stored interactions instead of random
-      const meLiked = await getVideoLikeStatus(videoId);
-      
+    (rows || []).map(async (dbVideo) => {
+      const idStr = dbVideo.id.toString();
+      const meLiked = await getVideoLikeStatus(idStr);
       return {
-        id: videoId,
-        src: data.publicUrl,
-        caption: `Video ${actualIndex + 1} - ${file.name}`,
-        author: { 
-          id: `u_${actualIndex + 1}`, 
-          name: `user${actualIndex + 1}`, 
-          avatar: undefined 
+        id: idStr,
+        src: dbVideo.url,
+        caption: `Video ${dbVideo.id}`,
+        author: {
+          id: `u_${dbVideo.id}`,
+          name: `user${dbVideo.id}`,
+          avatar: undefined,
         },
-        stats: { 
-          likes: Math.floor(Math.random() * 200) + 50, 
-          comments: Math.floor(Math.random() * 30) + 5 
+        stats: {
+          likes: Math.floor(Math.random() * 200) + 50,
+          comments: Math.floor(Math.random() * 30) + 5,
         },
-        meLiked
-      };
+        meLiked,
+      } as Video;
     })
   );
-
 
   return videosWithUrls;
 }
@@ -80,7 +66,7 @@ export function getTotalVideoCount(): number {
 }
 
 // Fetch specific videos by their IDs (for recommendations)
-export async function fetchRecommendedFeed(recommendedVideoIds: string[]): Promise<Video[]> {
+export async function fetchRecommendedFeed(recommendedVideoIds: number[]): Promise<Video[]> {
   await delay(120); // Simulate network delay
   
   // Get video data from Supabase by IDs

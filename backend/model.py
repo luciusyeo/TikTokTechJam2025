@@ -1,7 +1,7 @@
-from keras.models import Sequential
-from keras.layers import Dense, Input
-import keras
 import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Input
+from tensorflow import keras
 
 class BinaryMLP:
     def __init__(self, input_dim: int, hidden_dim):

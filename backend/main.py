@@ -16,9 +16,9 @@ supabase_client: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY
 # -----------------------------
 # Global model in memory
 # -----------------------------
-global_model = BinaryMLP(input_dim=1024, hidden_dim= 128)  # TODO: adjust input_dim for user+video concatenation
+global_model = BinaryMLP(input_dim=32, hidden_dim= 128)  # TODO: adjust input_dim for user+video concatenation
 global_model_state = None  # list of numpy arrays
-expected_clients = 2   # how many devices you expect in this round
+expected_clients = 1   # how many devices you expect in this round
 client_updates: Dict[str, List[np.ndarray]] = {}  # store weights per client
 
 # -----------------------------
@@ -30,7 +30,7 @@ class ModelUpdate(BaseModel):
 
 class RecommendRequest(BaseModel):
     user_vector: list
-    top_k: int = 5
+    top_k: int = 10
 
 # -----------------------------
 # Helper functions
@@ -118,12 +118,21 @@ def update_model(update: ModelUpdate):
 @app.post("/recommend")
 def recommend(req: RecommendRequest):
     global global_model
+    
+    # Validate user vector dimensions
+    if len(req.user_vector) != 16:
+        return {"error": f"user_vector must be exactly 16 dimensions, got {len(req.user_vector)}"}
+    
     user_vec = tf.convert_to_tensor([req.user_vector], dtype=tf.float32)
 
-    videos = supabase_client.table("videos").select("id, video_vector, url").execute().data
+    videos = supabase_client.table("videos").select("id, gen_vector, url").execute().data
     scores = []
     for v in videos:
-        video_vec = tf.convert_to_tensor([v["video_vector"]], dtype=tf.float32)
+        # Validate gen_vector dimensions
+        if len(v["gen_vector"]) != 16:
+            continue  # Skip videos with incorrect vector dimensions
+            
+        video_vec = tf.convert_to_tensor([v["gen_vector"]], dtype=tf.float32)
         score = global_model.forward(user_vec, video_vec).numpy().item()
         scores.append((v["id"], score, v["url"]))
 

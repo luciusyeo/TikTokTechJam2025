@@ -21,14 +21,17 @@ export async function buildUserVector(): Promise<number[]> {
   const likedVideos = interactions.filter(i => i.liked);
 
   if (likedVideos.length === 0) {
-    // If no liked videos, return zero vector of fixed size 1024
+    // If no liked videos, return zero vector of fixed size 16
     const emptyVector = Array(16).fill(0);
     await saveUserVector(emptyVector);
+    console.log("User vector (empty):", emptyVector); // Log the empty vector
     return emptyVector;
   }
 
+  console.log("Liked videos:", likedVideos);
+
   // 3. Get video IDs of liked videos
-  const videoIds = likedVideos.map(i => i.videoId);
+  const videoIds = likedVideos.map(i => parseInt(i.videoId)); // Convert to number
 
   // 4. Fetch video vectors from backend/Supabase
   const videoVectors: number[][] = await fetchVideoVectors(videoIds);
@@ -44,6 +47,8 @@ export async function buildUserVector(): Promise<number[]> {
 
   // 6. Average
   const userVector = math.divide(sumVector, likedVideos.length) as number[];
+
+  console.log("User vector:", userVector); // Log the calculated user vector
 
   // 7. Save updated user vector into local storage
   await saveUserVector(userVector);

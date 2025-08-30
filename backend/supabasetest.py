@@ -4,7 +4,7 @@ import config
 supabase_client: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
 
 new_video = {
-    "video_vector": [0.1, 0.2, 0.3],  # Example float8 array
+    "gen_vector": [0.1, 0.2, 0.3],  # Example float8 array
     "url": "https://example.com/video1.mp4"
 }
 
