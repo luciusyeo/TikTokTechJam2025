@@ -7,6 +7,7 @@ import config
 import numpy as np
 from local_api import router as local_router
 from typing import Dict, List
+import random
 
 # -----------------------------
 # Supabase client
@@ -128,6 +129,16 @@ def recommend(req: RecommendRequest):
     # Validate user vector dimensions
     if len(req.user_vector) != 16:
         return {"error": f"user_vector must be exactly 16 dimensions, got {len(req.user_vector)}"}
+    
+    user_vec = np.array(req.user_vector, dtype=np.float32)
+
+    # Check if user vector is a zero vector
+    if np.all(user_vec == 0):
+        videos = supabase_client.table("videos").select("id, url").execute().data
+        random.shuffle(videos)  # Shuffle in place
+        print("User vector is all zeros, returning random videos")
+        top_videos = [{"id": v["id"], "url": v["url"]} for v in videos[:req.top_k]]
+        return {"recommendations": top_videos}
     
     user_vec = tf.convert_to_tensor([req.user_vector], dtype=tf.float32)
 
