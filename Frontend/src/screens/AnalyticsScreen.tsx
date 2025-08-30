@@ -101,7 +101,6 @@ export default function AnalyticsScreen() {
       <View style={styles.listsContainer}>
         <View style={styles.listColumn}>
           <Text style={styles.deviceLabel}>Device 1</Text>
-
           <EmbeddingGraph
             videoEmbeddings={[
               [0.1, 0.3, 0.6, 0.8],
@@ -110,6 +109,7 @@ export default function AnalyticsScreen() {
             ]}
             userEmbedding={[0.1, 0.3, 0.6, 0.7]}
           />
+          <View style={styles.spacer}></View>
 
           <FlatList
             data={device1Videos}
@@ -136,7 +136,7 @@ export default function AnalyticsScreen() {
             ]}
             userEmbedding={[0.1, 0.3, 0.6, 0.7, 0.3]}
           />
-
+          <View style={styles.spacer}></View>
           <FlatList
             data={device2Videos}
             renderItem={({ item, index }) =>
@@ -206,5 +206,8 @@ const styles = StyleSheet.create({
   video: {
     width: COVER_WIDTH,
     height: COVER_HEIGHT,
+  },
+  spacer: {
+    marginBottom: 12,
   },
 });
