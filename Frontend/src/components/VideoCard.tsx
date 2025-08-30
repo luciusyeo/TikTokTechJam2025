@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, useWindowDimensions, TouchableOpacity } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -24,6 +24,7 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
   const { width, height } = useWindowDimensions();
   const { toggleLike, openComments } = useFeed();
   const isMountedRef = useRef(true);
+  const [isPaused, setIsPaused] = useState(false);
   
   // Create video player with configuration
   const player = useVideoPlayer(video.src, (player) => {
@@ -39,15 +40,29 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
   // Button press animations
   const likeButtonScale = useSharedValue(1);
   const commentButtonScale = useSharedValue(1);
+  
+  // Pause indicator animation
+  const pauseIconOpacity = useSharedValue(0);
+  const pauseIconScale = useSharedValue(0.8);
 
-  // Auto-play control
+  // Auto-play control with manual pause respect
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !isPaused) {
       player.play();
     } else {
       player.pause();
     }
-  }, [isActive, player]);
+  }, [isActive, isPaused, player]);
+  
+  // Reset pause state when video becomes inactive
+  useEffect(() => {
+    if (!isActive && isPaused) {
+      setIsPaused(false);
+      // Also reset pause icon animations
+      pauseIconOpacity.value = 0;
+      pauseIconScale.value = 0.8;
+    }
+  }, [isActive, isPaused, pauseIconOpacity, pauseIconScale]);
 
   // Cleanup animations on unmount
   useEffect(() => {
@@ -55,8 +70,10 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
       isMountedRef.current = false;
       cancelAnimation(heartScale);
       cancelAnimation(heartOpacity);
+      cancelAnimation(pauseIconOpacity);
+      cancelAnimation(pauseIconScale);
     };
-  }, [heartScale, heartOpacity]);
+  }, [heartScale, heartOpacity, pauseIconOpacity, pauseIconScale]);
 
   // Enhanced heart burst animation with rotation
   const triggerHeartBurst = () => {
@@ -137,6 +154,31 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
     }
   };
 
+  const handleSingleTap = async () => {
+    try {
+      // Toggle pause state
+      setIsPaused(prev => !prev);
+      
+      // Trigger pause icon animation
+      if (!isPaused) {
+        // Show pause icon
+        pauseIconOpacity.value = withSequence(
+          withTiming(1, { duration: 150 }),
+          withTiming(0, { duration: 800 })
+        );
+        pauseIconScale.value = withSequence(
+          withTiming(1, { duration: 150 }),
+          withTiming(0.8, { duration: 800 })
+        );
+      }
+      
+      // Light haptic feedback
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.warn("Error handling single tap:", error);
+    }
+  };
+
   const animatedHeartStyle = useAnimatedStyle(() => ({
     transform: [
       { scale: heartScale.value },
@@ -152,6 +194,22 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
   const animatedCommentButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: commentButtonScale.value }],
   }));
+  
+  const animatedPauseIconStyle = useAnimatedStyle(() => ({
+    opacity: pauseIconOpacity.value,
+    transform: [{ scale: pauseIconScale.value }],
+  }));
+
+  const singleTapGesture = Gesture.Tap()
+    .numberOfTaps(1)
+    .maxDelay(250)
+    .onEnd(() => {
+      try {
+        handleSingleTap();
+      } catch (error) {
+        console.warn("Single tap gesture error:", error);
+      }
+    });
 
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
@@ -159,9 +217,15 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
       try {
         handleDoubleTap();
       } catch (error) {
-        console.warn("Gesture handler error:", error);
+        console.warn("Double tap gesture error:", error);
       }
     });
+
+  // Combine gestures with double tap taking priority
+  const tapGesture = Gesture.Exclusive(
+    doubleTapGesture,
+    singleTapGesture
+  );
 
   return (
     <ErrorBoundary>
@@ -178,7 +242,7 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
             nativeControls={false}
           />
           
-          <GestureDetector gesture={doubleTapGesture}>
+          <GestureDetector gesture={tapGesture}>
             <View className="absolute inset-0">
               {/* Heart burst animation overlay */}
               <Animated.View
@@ -186,6 +250,16 @@ export default function VideoCard({ video, isActive }: VideoCardProps) {
                 style={animatedHeartStyle}
               >
                 <Text className="text-red-500 text-8xl">❤️</Text>
+              </Animated.View>
+              
+              {/* Pause indicator overlay */}
+              <Animated.View
+                className="absolute inset-0 items-center justify-center pointer-events-none"
+                style={animatedPauseIconStyle}
+              >
+                <View className="bg-black bg-opacity-60 rounded-full p-4">
+                  <Text className="text-white text-6xl">⏸️</Text>
+                </View>
               </Animated.View>
             </View>
           </GestureDetector>
