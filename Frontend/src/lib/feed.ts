@@ -1,5 +1,6 @@
 import { Video, Comment } from "../types";
 import { supabase } from "./supabase";
+import { getVideoLikeStatus } from "./ml";
 
 // Mock delay to simulate network latency
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -47,26 +48,35 @@ export async function fetchFeed(startIndex = 0, count = 2): Promise<Video[]> {
   console.log(`Loading videos ${startIndex} to ${endIndex - 1} (${requestedFiles.length} videos)`);
 
   // Generate video objects with URLs and mock metadata
-  const videosWithUrls: Video[] = requestedFiles.map((file, index) => {
-    const { data } = supabase.storage.from('videos').getPublicUrl(file.name);
-    const actualIndex = startIndex + index;
-    
-    return {
-      id: `v_${actualIndex + 1}`,
-      src: data.publicUrl,
-      caption: `Video ${actualIndex + 1} - ${file.name}`,
-      author: { 
-        id: `u_${actualIndex + 1}`, 
-        name: `user${actualIndex + 1}`, 
-        avatar: undefined 
-      },
-      stats: { 
-        likes: Math.floor(Math.random() * 200) + 50, 
-        comments: Math.floor(Math.random() * 30) + 5 
-      },
-      meLiked: Math.random() > 0.7
-    };
-  });
+  const videosWithUrls: Video[] = await Promise.all(
+    requestedFiles.map(async (file, index) => {
+      const { data } = supabase.storage.from('videos').getPublicUrl(file.name);
+      const actualIndex = startIndex + index;
+      const videoId = `v_${actualIndex + 1}`;
+      
+      // Get actual like status from stored interactions instead of random
+      const meLiked = await getVideoLikeStatus(videoId);
+      
+      return {
+        id: videoId,
+        src: data.publicUrl,
+        caption: `Video ${actualIndex + 1} - ${file.name}`,
+        author: { 
+          id: `u_${actualIndex + 1}`, 
+          name: `user${actualIndex + 1}`, 
+          avatar: undefined 
+        },
+        stats: { 
+          likes: Math.floor(Math.random() * 200) + 50, 
+          comments: Math.floor(Math.random() * 30) + 5 
+        },
+        meLiked
+      };
+    })
+  );
+
+  console.log(`Generated ${videosWithUrls.length} videos with interaction data:`, 
+    videosWithUrls.map(v => `${v.id}: liked=${v.meLiked}`).join(', '));
 
   return videosWithUrls;
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useCallback, useRef, useState } from "react";
 import { View, StyleSheet, FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, Text } from "react-native";
 import { useFeed } from "../state";
 import { fetchFeed, getTotalVideoCount } from "../lib/feed";
+import { initializeML } from "../lib/ml";
 import { Video } from "../types";
 import VideoCard from "../components/VideoCard";
 import CommentsSheet from "../components/CommentsSheet";
@@ -17,12 +18,23 @@ export default function FeedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hasMoreVideos, setHasMoreVideos] = useState(true);
 
-  // Initial load - load first 2 videos
+  // Initial load - initialize ML system then load first 2 videos
   useEffect(() => {
     const loadInitialFeed = async () => {
       try {
         setIsLoading(true);
         setError(null);
+        
+        // Initialize ML system first to load stored interactions
+        console.log('Initializing ML system...');
+        try {
+          await initializeML();
+          console.log('ML system initialized successfully');
+        } catch (mlError) {
+          console.warn('ML system initialization failed, continuing without stored interactions:', mlError);
+          // Don't fail the entire app if ML system fails - just log and continue
+        }
+        
         const initialVideos = await fetchFeed(0, 2);
         setVideos(initialVideos);
         
