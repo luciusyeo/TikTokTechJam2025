@@ -1,2 +1,2 @@
-SUPABASE_URL = "https://qrybqqegvevacimuhdrt.supabase.co" 
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFyeWJxcWVndmV2YWNpbXVoZHJ0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjQ2NTI2MCwiZXhwIjoyMDcyMDQxMjYwfQ._cdRCdPKRdm1bwP1bsuFjAnMNKe7GbEzgjJd47fP984"
+SUPABASE_URL =
+SUPABASE_KEY =
