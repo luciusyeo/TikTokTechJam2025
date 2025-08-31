@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getDeviceId } from "./deviceId";
 
 const BACKEND_URL = "http://localhost:8000";
 
@@ -9,8 +10,8 @@ const BACKEND_URL = "http://localhost:8000";
  */
 export async function sendTrainingBatch(X: number[][], y: number[]): Promise<void> {
   try {
-    // Hardcoded client_id
-    const clientId = "1"; // Use client ID "1" for this example
+    // Get unique device ID
+    const clientId = await getDeviceId();
 
     // Send the request with client_id included in the payload
     const response = await axios.post(`${BACKEND_URL}/local/train`, { X, y, client_id: clientId });

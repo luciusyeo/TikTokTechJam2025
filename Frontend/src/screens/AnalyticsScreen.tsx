@@ -133,32 +133,25 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => router.back()}
-      >
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>
 
-      {loading && (
+      {/* {loading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#2563EB" />
         </View>
-      )}
+      )} */}
 
       <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.mainTitle}>
-          Federated Learning Analytics
-        </Text>
+        <Text style={styles.mainTitle}>Federated Learning Analytics</Text>
 
         <View style={styles.trustGraphSection}>
-          <Text style={styles.sectionTitle}>
-            Trust Graph
-          </Text>
+          <Text style={styles.sectionTitle}>Trust Graph</Text>
           <View style={styles.trustGraphContainer}>
             <TrustGraph data={trustGraphData} canvasSize={280} />
           </View>
@@ -175,19 +168,27 @@ export default function AnalyticsScreen() {
 
                 <View style={styles.embeddingGraphContainer}>
                   <EmbeddingGraph
-                    videoEmbeddings={clientVideos.map((v) => v.vector || userVec)}
+                    videoEmbeddings={clientVideos.map(
+                      (v) => v.vector || userVec
+                    )}
                     userEmbedding={userVec}
                   />
                 </View>
 
                 <View style={styles.videoGrid}>
-                  {Array.from({ length: Math.ceil(clientVideos.length / 2) }).map((_, rowIndex) => (
+                  {Array.from({
+                    length: Math.ceil(clientVideos.length / 2),
+                  }).map((_, rowIndex) => (
                     <View key={`row-${rowIndex}`} style={styles.videoRow}>
-                      {clientVideos.slice(rowIndex * 2, rowIndex * 2 + 2).map((item, colIndex) => (
-                        <View key={`${clientId}-video-${rowIndex * 2 + colIndex}`}>
-                          {renderCover(item.url, rowIndex * 2 + colIndex)}
-                        </View>
-                      ))}
+                      {clientVideos
+                        .slice(rowIndex * 2, rowIndex * 2 + 2)
+                        .map((item, colIndex) => (
+                          <View
+                            key={`${clientId}-video-${rowIndex * 2 + colIndex}`}
+                          >
+                            {renderCover(item.url, rowIndex * 2 + colIndex)}
+                          </View>
+                        ))}
                     </View>
                   ))}
                 </View>
@@ -226,10 +227,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#2563EB",
     zIndex: 9999,
   },
-  backText: { 
-    color: "#fff", 
-    fontWeight: "700", 
-    fontSize: 16 
+  backText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
   scrollContainer: {
     flex: 1,
@@ -299,9 +300,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#333",
   },
-  video: { 
-    width: "100%", 
-    height: "100%" 
+  video: {
+    width: "100%",
+    height: "100%",
   },
   rankLabel: {
     position: "absolute",
@@ -317,9 +318,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 2,
   },
-  rankText: { 
-    color: "#fff", 
-    fontWeight: "700", 
-    fontSize: 12 
+  rankText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 12,
   },
 });
